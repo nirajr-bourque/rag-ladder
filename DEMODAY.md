@@ -6,7 +6,9 @@ Setting up for the first time? That is [OPERATIONS.md](OPERATIONS.md) — start 
 *"From nothing to a working demo"*. This file assumes it already works.
 
 **The slides:** [presentation/rag-ladder.html](presentation/rag-ladder.html) — one self-contained
-file, no build step and no network. Open it and press <kbd>f</kbd>.
+file, no build step and no network. Open it and press <kbd>f</kbd>. The same content in readable
+form, for rehearsing from or handing out afterwards, is
+[presentation/rag-ladder.md](presentation/rag-ladder.md).
 
 ```powershell
 start presentation/rag-ladder.html
