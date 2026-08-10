@@ -1,0 +1,31 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+
+# Credentials. Prefer `dotnet user-secrets`, which stores them outside the repo entirely;
+# these patterns exist so the alternatives cannot be committed by accident.
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+*.env
+.env
+
+# Local ONNX models (~180 MB). Fetch with tools/fetch-models.ps1.
+models/
+
+# SQLite state, uploaded PDFs, run logs.
+data/
+
+# Recorded model responses are worth committing for demo day; the working
+# directory used while recording is not.
+recordings/*.tmp
+
+# Generated from the markdown corpora by tools/RagLadder.CorpusBuilder. Committing them would
+# let the PDF drift away from the markdown it is built from, which is the one thing the trap
+# anchors cannot survive.
+corpus/demo/*.pdf
+
+# Written by tools/import-extraction.ps1 -Export. Regenerate it; do not review it in a diff.
+extraction-request.md

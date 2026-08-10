@@ -1,0 +1,443 @@
+{
+  "name": "spiderman-seed-hand-authored",
+  "//": "Golden set for spiderman-corpus-seed.md. Every answer is taken verbatim from that corpus. Smaller than the full dossier's 52 because the seed carries ten of the twelve traps — title_collision has no Spider-Man instance, so that type is absent. The ungrounded control group is unchanged and remains the honesty check: every stage 1-11 must refuse it, stage 0 must not.",
+
+  "questions": [
+    {
+      "id": "s001",
+      "question": "Who directed Spider-Man (2002)?",
+      "type": "simple_lookup",
+      "expectedAnswerContains": ["Sam Raimi Wijesuriya"],
+      "expectedSections": ["Spider-Man (2002)"],
+      "passesFromStage": 1
+    },
+    {
+      "id": "s002",
+      "question": "Who directed Spider-Man: No Way Home?",
+      "type": "simple_lookup",
+      "expectedAnswerContains": ["Chathura Kodikara"],
+      "expectedSections": ["No Way Home"],
+      "passesFromStage": 1
+    },
+    {
+      "id": "s003",
+      "question": "Who plays Otto Octavius in Spider-Man 2?",
+      "type": "simple_lookup",
+      "expectedAnswerContains": ["Hamza Cassim"],
+      "expectedSections": ["Spider-Man 2 (2004)"],
+      "passesFromStage": 1
+    },
+    {
+      "id": "s004",
+      "question": "Which studio distributes the Venom features?",
+      "type": "simple_lookup",
+      "expectedAnswerContains": ["Kelani Pictures"],
+      "expectedSections": ["Venom (2018)"],
+      "passesFromStage": 1
+    },
+
+    {
+      "id": "s005",
+      "question": "What was the domestic opening weekend for Spider-Man: No Way Home?",
+      "type": "exact_figure",
+      "expectedAnswerContains": ["3,461,120,540"],
+      "expectedSections": ["Box Office Record"],
+      "trap": 3,
+      "passesFromStage": 4,
+      "notes": "Embeddings are blind to exact figures. The keyword arm of hybrid search is what finds this."
+    },
+    {
+      "id": "s006",
+      "question": "What was the worldwide total gross of Spider-Man: No Way Home?",
+      "type": "exact_figure",
+      "expectedAnswerContains": ["19,120,000,000"],
+      "expectedSections": ["Box Office Record"],
+      "trap": 3,
+      "passesFromStage": 4
+    },
+    {
+      "id": "s007",
+      "question": "On how many domestic screens did No Way Home open?",
+      "type": "exact_figure",
+      "expectedAnswerContains": ["4,336"],
+      "expectedSections": ["Box Office Record"],
+      "trap": 3,
+      "passesFromStage": 4
+    },
+    {
+      "id": "s008",
+      "question": "What was the reported production budget for No Way Home?",
+      "type": "exact_figure",
+      "expectedAnswerContains": ["2,000,000,000"],
+      "expectedSections": ["Box Office Record"],
+      "trap": 3,
+      "passesFromStage": 4
+    },
+
+    {
+      "id": "s009",
+      "question": "How many features has Niraj Ranasinghe appeared in as Peter Parker?",
+      "type": "boundary",
+      "expectedAnswerContains": ["6"],
+      "expectedSections": ["Talent Record: Niraj Ranasinghe"],
+      "trap": 1,
+      "passesFromStage": 2,
+      "notes": "The chronological credit list is split across a forced page boundary. A fixed 400-token chunk with zero overlap can only ever see half of it."
+    },
+    {
+      "id": "s010",
+      "question": "What is the most recent feature in Niraj Ranasinghe's credit list?",
+      "type": "boundary",
+      "expectedAnswerContains": ["No Way Home"],
+      "expectedSections": ["Talent Record: Niraj Ranasinghe"],
+      "trap": 1,
+      "passesFromStage": 2
+    },
+    {
+      "id": "s011",
+      "question": "Which Niraj Ranasinghe credits were released in 2019?",
+      "type": "boundary",
+      "expectedAnswerContains": ["Far From Home", "Endgame"],
+      "expectedSections": ["Talent Record: Niraj Ranasinghe"],
+      "trap": 1,
+      "passesFromStage": 2
+    },
+    {
+      "id": "s012",
+      "question": "In Chathura Pathirana's credits, which title follows Spider-Man 3?",
+      "type": "boundary",
+      "expectedAnswerContains": ["No Way Home"],
+      "expectedSections": ["Talent Record: Chathura Pathirana"],
+      "passesFromStage": 2
+    },
+
+    {
+      "id": "s013",
+      "question": "Who currently plays Peter Parker?",
+      "type": "superseded",
+      "expectedAnswerContains": ["Niraj Ranasinghe"],
+      "expectedSections": ["Casting History"],
+      "trap": 2,
+      "passesFromStage": 3,
+      "notes": "Section 4 still lists Chathura Pathirana for the 2002 film. Without a date-aware filter, retrieval blends the superseded credit with the current one."
+    },
+    {
+      "id": "s014",
+      "question": "Who played Peter Parker in the 2012 recast?",
+      "type": "superseded",
+      "expectedAnswerContains": ["Sahan Edirisinghe"],
+      "expectedSections": ["Casting History"],
+      "trap": 2,
+      "passesFromStage": 3
+    },
+    {
+      "id": "s015",
+      "question": "Who portrayed Peter Parker in Spider-Man (2002)?",
+      "type": "superseded",
+      "expectedAnswerContains": ["Chathura Pathirana"],
+      "expectedSections": ["Spider-Man (2002)"],
+      "trap": 2,
+      "passesFromStage": 3
+    },
+    {
+      "id": "s016",
+      "question": "Who played Harry Osborn in The Amazing Spider-Man 2?",
+      "type": "superseded",
+      "expectedAnswerContains": ["Dane DeHaan Perera"],
+      "expectedSections": ["The Amazing Spider-Man 2 (2014)"],
+      "trap": 2,
+      "passesFromStage": 3
+    },
+
+    {
+      "id": "s017",
+      "question": "Who did the music for Spider-Man: Homecoming?",
+      "type": "terse",
+      "expectedAnswerContains": ["Piyal Devendra"],
+      "expectedSections": ["Homecoming (2017)"],
+      "trap": 5,
+      "passesFromStage": 6,
+      "notes": "The corpus says 'original score composed by'. The question says 'music'. Query rewrite closes the gap."
+    },
+    {
+      "id": "s018",
+      "question": "Who did the music for Spider-Man (2002)?",
+      "type": "terse",
+      "expectedAnswerContains": ["Isuru Obeysekera"],
+      "expectedSections": ["Spider-Man (2002)"],
+      "trap": 4,
+      "passesFromStage": 5,
+      "notes": "The composer credit sits last in a long crew block, so it ranks poorly on cosine until the cross-encoder reranks."
+    },
+    {
+      "id": "s019",
+      "question": "Who was behind the camera on The Amazing Spider-Man?",
+      "type": "terse",
+      "expectedAnswerContains": ["Matthias Wanigaratne"],
+      "expectedSections": ["The Amazing Spider-Man (2012)"],
+      "trap": 5,
+      "passesFromStage": 6
+    },
+    {
+      "id": "s020",
+      "question": "Who did the music for Venom?",
+      "type": "terse",
+      "expectedAnswerContains": ["Ludwig"],
+      "expectedSections": ["Venom (2018)"],
+      "trap": 5,
+      "passesFromStage": 6
+    },
+
+    {
+      "id": "s021",
+      "question": "Which performer returns only for the closing act of No Way Home?",
+      "type": "orphan_context",
+      "expectedAnswerContains": ["Chathura Pathirana"],
+      "expectedSections": ["Production Note"],
+      "trap": 6,
+      "passesFromStage": 7,
+      "notes": "The chunk reads 'He wore the suit for three features before the recast' and names neither the performer nor the film. Only the contextual prefix supplies the referent."
+    },
+    {
+      "id": "s022",
+      "question": "Where was the sequence with the three of them together shot?",
+      "type": "orphan_context",
+      "expectedAnswerContains": ["Ratmalana"],
+      "expectedSections": ["Production Note"],
+      "trap": 6,
+      "passesFromStage": 7
+    },
+    {
+      "id": "s023",
+      "question": "Over how many nights was the closing sequence of No Way Home shot?",
+      "type": "orphan_context",
+      "expectedAnswerContains": ["four"],
+      "expectedSections": ["Production Note"],
+      "trap": 6,
+      "passesFromStage": 7
+    },
+    {
+      "id": "s024",
+      "question": "Which feature's theme does the closing score rework?",
+      "type": "orphan_context",
+      "expectedAnswerContains": ["2002"],
+      "expectedSections": ["Production Note"],
+      "trap": 6,
+      "passesFromStage": 7
+    },
+
+    {
+      "id": "s025",
+      "question": "Compare the domestic opening weekends of Spider-Man: No Way Home and Spider-Man (2002). Which opened bigger?",
+      "type": "multi_part",
+      "expectedAnswerContains": ["No Way Home", "3,461,120,540", "1,146,700,000"],
+      "expectedSections": ["Box Office Record"],
+      "trap": 7,
+      "passesFromStage": 9,
+      "notes": "One search cannot serve both halves reliably. The agentic loop issues one per part."
+    },
+    {
+      "id": "s026",
+      "question": "Which grossed more worldwide, Venom (2018) or The Amazing Spider-Man 2?",
+      "type": "multi_part",
+      "expectedAnswerContains": ["Venom"],
+      "expectedSections": ["Venom (2018)", "The Amazing Spider-Man 2 (2014)"],
+      "trap": 7,
+      "passesFromStage": 9
+    },
+    {
+      "id": "s027",
+      "question": "Name both the composer and the cinematographer of Spider-Man: No Way Home.",
+      "type": "multi_part",
+      "expectedAnswerContains": ["Piyal Devendra", "Mauro Fiore Ephraums"],
+      "expectedSections": ["No Way Home (2021)"],
+      "trap": 7,
+      "passesFromStage": 9
+    },
+    {
+      "id": "s028",
+      "question": "Who composed Spider-Man 2 (2004), and who composed Spider-Man 3 (2007)?",
+      "type": "multi_part",
+      "expectedAnswerContains": ["Danny Elfman Kariyawasam", "Christopher Young Perera"],
+      "expectedSections": ["Spider-Man 2 (2004)", "Spider-Man 3 (2007)"],
+      "trap": 7,
+      "passesFromStage": 9
+    },
+
+    {
+      "id": "s029",
+      "question": "Which composer scored more than one Spider-Man feature?",
+      "type": "multi_hop",
+      "expectedAnswerContains": ["Piyal Devendra"],
+      "expectedSections": ["Recurring Creative Partnerships"],
+      "trap": 8,
+      "passesFromStage": 10,
+      "notes": "Two traversals: composer to feature, feature back to composer. No amount of similarity gets there."
+    },
+    {
+      "id": "s030",
+      "question": "Which director made all three Serendib-era Spider-Man features?",
+      "type": "multi_hop",
+      "expectedAnswerContains": ["Chathura Kodikara"],
+      "expectedSections": ["Recurring Creative Partnerships"],
+      "trap": 8,
+      "passesFromStage": 10
+    },
+    {
+      "id": "s031",
+      "question": "Which performer appears in both a Spider-Man feature and a Venom feature?",
+      "type": "multi_hop",
+      "expectedAnswerContains": ["Manoj Tennakoon"],
+      "expectedSections": ["Recurring Creative Partnerships"],
+      "trap": 8,
+      "passesFromStage": 10
+    },
+    {
+      "id": "s032",
+      "question": "Which cinematographer shot both Venom features?",
+      "type": "multi_hop",
+      "expectedAnswerContains": ["Udara Wanigasekara"],
+      "expectedSections": ["Venom (2018)", "Venom: Let There Be Carnage (2021)"],
+      "trap": 8,
+      "passesFromStage": 10
+    },
+
+    {
+      "id": "s033",
+      "question": "How is Isuru Obeysekera connected to Nethmi Tomei?",
+      "type": "path",
+      "expectedPathContains": ["Chathura Pathirana"],
+      "trap": 10,
+      "passesFromStage": 10,
+      "notes": "They never shared a title. The bridge is Chathura Pathirana, who acted in both Spider-Man (2002) and No Way Home (2021). Four hops, two continuities. Unanswerable below stage 10 in path mode."
+    },
+    {
+      "id": "s034",
+      "question": "How is Sam Raimi Wijesuriya connected to Niraj Ranasinghe?",
+      "type": "path",
+      "expectedPathContains": ["No Way Home"],
+      "trap": 10,
+      "passesFromStage": 10,
+      "notes": "The crossover feature is the only place the continuities meet, so every path crosses it."
+    },
+    {
+      "id": "s035",
+      "question": "How is Yasodha Alwis connected to Nethmi Tomei?",
+      "type": "path",
+      "expectedPathContains": ["Sahan Edirisinghe"],
+      "trap": 10,
+      "passesFromStage": 10,
+      "notes": "Alwis appears only in the Webb continuity; Sahan Edirisinghe carries the link into No Way Home."
+    },
+    {
+      "id": "s036",
+      "question": "How is Woody Harrelson Jansz connected to Rashmi Samaraweera?",
+      "type": "path",
+      "expectedPathContains": ["Manoj Tennakoon"],
+      "trap": 10,
+      "passesFromStage": 10,
+      "notes": "The only bridge out of the Venom continuity is Manoj Tennakoon, via Spider-Man 3."
+    },
+
+    {
+      "id": "s037",
+      "question": "Which studio released the most titles in this dossier?",
+      "type": "aggregation",
+      "expectedAnswerContains": ["Kelani"],
+      "trap": 9,
+      "passesFromStage": 10,
+      "notes": "Unanswerable from top-k at any k. Trivial in Cypher."
+    },
+    {
+      "id": "s038",
+      "question": "Which director and cinematographer pairing recurs across the most features?",
+      "type": "aggregation",
+      "expectedAnswerContains": ["Wanigasekara"],
+      "trap": 9,
+      "passesFromStage": 10
+    },
+    {
+      "id": "s039",
+      "question": "How many Spider-Man features did Kelani Pictures release in 2021?",
+      "type": "aggregation",
+      "expectedAnswerContains": ["2"],
+      "trap": 9,
+      "passesFromStage": 10
+    },
+    {
+      "id": "s040",
+      "question": "Which studio produced Spider-Man: Homecoming?",
+      "type": "aggregation",
+      "expectedAnswerContains": ["Kelani"],
+      "trap": 9,
+      "passesFromStage": 10
+    },
+
+    {
+      "id": "s041",
+      "question": "Who directed Venom?",
+      "type": "name_collision",
+      "expectedAnswerContains": ["Ruben Fleischer Amarasinghe"],
+      "expectedSections": ["Venom (2018)"],
+      "trap": 12,
+      "passesFromStage": 1,
+      "notes": "Trap 12 as the corpus states it: Venom is both a film title and the character Eddie Brock becomes. Nothing on the ladder fixes this — entity resolution does, by refusing to merge across types."
+    },
+    {
+      "id": "s042",
+      "question": "Which performer plays Eddie Brock?",
+      "type": "name_collision",
+      "expectedAnswerContains": ["Manoj Tennakoon"],
+      "expectedSections": ["Venom (2018)"],
+      "trap": 12,
+      "passesFromStage": 1
+    },
+    {
+      "id": "s043",
+      "question": "How long is Venom: Let There Be Carnage?",
+      "type": "name_collision",
+      "expectedAnswerContains": ["97"],
+      "expectedSections": ["Venom: Let There Be Carnage (2021)"],
+      "trap": 12,
+      "passesFromStage": 1
+    },
+    {
+      "id": "s044",
+      "question": "Who plays Anne Weying in the Venom features?",
+      "type": "name_collision",
+      "expectedAnswerContains": ["Michelle Williams Perera"],
+      "expectedSections": ["Venom (2018)"],
+      "trap": 12,
+      "passesFromStage": 1
+    },
+
+    {
+      "id": "u001",
+      "question": "Who directed Oppenheimer?",
+      "type": "ungrounded",
+      "expectRefusal": true,
+      "notes": "CONTROL GROUP. A real film absent from the corpus. Every stage 1-11 must refuse. Stage 0 must answer confidently — that contrast is the whole point of rung 0."
+    },
+    {
+      "id": "u002",
+      "question": "How much did Barbie make at the worldwide box office?",
+      "type": "ungrounded",
+      "expectRefusal": true,
+      "notes": "CONTROL GROUP. Absent from the corpus."
+    },
+    {
+      "id": "u003",
+      "question": "Who composed the score for Dune: Part Two?",
+      "type": "ungrounded",
+      "expectRefusal": true,
+      "notes": "CONTROL GROUP. Absent from the corpus."
+    },
+    {
+      "id": "u004",
+      "question": "Which studio produced Everything Everywhere All at Once?",
+      "type": "ungrounded",
+      "expectRefusal": true,
+      "notes": "CONTROL GROUP. Absent from the corpus."
+    }
+  ]
+}

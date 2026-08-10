@@ -1,0 +1,11 @@
+{
+  "//": "Forced page breaks used to author traps deterministically. Each entry is matched against the sanitized text of a rendered line; a page break is inserted immediately after the first line containing it. Without this, whether a trap fires would depend on the vagaries of text flow. Entries that do not appear in the corpus being built are simply ignored, so both corpora can share this file.",
+  "breakAfterLineContaining": [
+    "Avengers: Infinity War (2018) - Peter Parker",
+    "Nick Fury, post-credits appearance"
+  ],
+  "notes": {
+    "Avengers: Infinity War (2018) - Peter Parker": "Trap 1 in spiderman-corpus-seed.md. Section 14 lists Niraj Ranasinghe's credits chronologically; breaking the page after the 2018 entry puts credits 1-3 and 4-6 in different chunks, so a fixed 400-token no-overlap chunk can only ever see half the filmography.",
+    "Nick Fury, post-credits appearance": "Trap 1 in marvel-corpus-srilanka-full.md. Section 73 lists Arjun Sivalingam's feature credits chronologically; the same split, one corpus larger."
+  }
+}

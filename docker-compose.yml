@@ -1,0 +1,103 @@
+# Local infrastructure for networks that block the hosted services.
+#
+#   ollama   chat and embeddings. The usual block is on the *website* host; model downloads come
+#            from registry.ollama.ai, a different host that is commonly still reachable, so a
+#            local container can pull models even when ollama.com is unreachable.
+#   qdrant   the vector store, replacing Qdrant Cloud.
+#
+# Once running, the app talks to localhost, which no proxy can block.
+#
+#   docker compose up -d
+#   pwsh tools/setup-ollama.ps1 -Apply   # pulls models and writes the matching config
+#
+# GPU: uncomment the deploy block for a large speed-up. CPU-only works fine for the demo, but use
+# a small model (qwen2.5:3b) rather than a 7B one.
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ragladder-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    environment:
+      # Keep a model resident between questions; loading per call dominates latency otherwise.
+      OLLAMA_KEEP_ALIVE: "30m"
+      # One slot, deliberately. Extraction reuses an identical ~2,500-token prompt prefix on
+      # every chunk; a single slot keeps it cached and prefill drops roughly tenfold. Two slots
+      # round-robin and evict it.
+      OLLAMA_NUM_PARALLEL: "1"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+    # Uncomment for an NVIDIA GPU.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+    # Ollama Cloud models (the "-cloud" tags) register from registry.ollama.ai but run their
+    # inference against ollama.com. Behind an SSL-inspecting proxy that handshake fails and the
+    # daemon returns 502, even though plain TCP connects. If that is your situation, mount your
+    # corporate root CA so the container trusts the proxy, and supply a key:
+    #
+    # environment:
+    #   OLLAMA_API_KEY: "${OLLAMA_API_KEY}"
+    # volumes:
+    #   - ./corp-root-ca.crt:/usr/local/share/ca-certificates/corp-root-ca.crt:ro
+    # command: sh -c "update-ca-certificates && ollama serve"
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ragladder-qdrant
+    ports:
+      - "6333:6333"   # REST, and the dashboard at /dashboard
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant-storage:/qdrant/storage
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__ENABLE_STATIC_CONTENT: "true"
+
+  # Local graph store, as an alternative to Neo4j AuraDB.
+  #
+  # Worth preferring for a demo: no free-tier pause, no dependency on an outbound Bolt connection
+  # surviving a long extraction run (an idle Aura connection dropped one commit here), and Neo4j
+  # Browser on http://localhost:7474 makes a good prop next to the app.
+  neo4j:
+    image: neo4j:5-community
+    container_name: ragladder-neo4j
+    ports:
+      - "7474:7474"   # Browser
+      - "7687:7687"   # Bolt
+    volumes:
+      - neo4j-data:/data
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: "neo4j/ragladder-demo"
+      NEO4J_server_memory_heap_max__size: "1G"
+      NEO4J_server_memory_pagecache_size: "512m"
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+
+volumes:
+  ollama-models:
+    name: ragladder-ollama
+  qdrant-storage:
+    name: ragladder-qdrant
+  neo4j-data:
+    name: ragladder-neo4j

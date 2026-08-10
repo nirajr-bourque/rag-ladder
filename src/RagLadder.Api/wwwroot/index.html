@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAG Ladder — film &amp; television</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🪜</text></svg>" />
+
+  <!--
+    Watchdog. Deliberately inline, dependency-free, and first: it is the one thing that still runs
+    when app.js fails to load, fails to parse, or throws on its way up. Without it every such
+    failure looks identical from the outside — cards stuck on "loading…", clicks doing nothing, and
+    the only explanation sitting in a console nobody has open. It puts the real reason on the page.
+  -->
+  <script>
+    window.__ragWatchdog = { errors: [] };
+    window.addEventListener('error', function (e) {
+      window.__ragWatchdog.errors.push((e.message || 'script error') + (e.filename ? ' — ' + e.filename + ':' + e.lineno : ''));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      window.__ragWatchdog.errors.push('unhandled promise rejection: ' + ((e.reason && e.reason.message) || e.reason));
+    });
+    window.addEventListener('DOMContentLoaded', function () {
+      setTimeout(function () {
+        if (window.__ragBooted) return;
+        var why = !window.__ragAlive
+          ? 'app.js did not run. It failed to load or failed to parse.'
+          : 'app.js loaded but never finished starting up.';
+        var errors = window.__ragWatchdog.errors;
+        var banner = document.createElement('div');
+        banner.className = 'boot-banner';
+        banner.id = 'watchdogBanner';
+        banner.innerHTML =
+          '<b>The page did not start.</b> ' + why +
+          (errors.length ? '<br><span style="font-family:ui-monospace,monospace;font-size:12px">' + errors.join('<br>') + '</span>' : '') +
+          '<br><span style="font-size:12px">Hard-reload with Ctrl+Shift+R. If it persists, the message above is the cause.</span>';
+        document.body.insertBefore(banner, document.body.firstChild);
+      }, 4000);
+    });
+  </script>
+</head>
+<body>
+
+<header class="top">
+  <h1>RAG Ladder <span class="faint">— film &amp; television</span></h1>
+  <div class="row hide-in-present">
+    <label class="chk" for="docSelect">Document</label>
+    <select id="docSelect"><option value="">(none loaded)</option></select>
+  </div>
+  <span class="spacer"></span>
+  <span id="healthPill" class="pill">health…</span>
+  <span id="presentPill" class="pill hide-in-present"><a href="?present=1">presentation mode</a></span>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="documents" class="active">Documents</button>
+  <button data-tab="process">Process</button>
+  <button data-tab="review">Review</button>
+  <button data-tab="ask">Ask</button>
+  <button data-tab="compare">Compare</button>
+  <button data-tab="eval">Eval</button>
+  <button data-tab="graph">Graph</button>
+  <button data-tab="explore">Explore</button>
+</nav>
+
+<main>
+
+  <!-- ------------------------------------------------ Documents -->
+  <section class="panel active" id="panel-documents">
+    <div class="card">
+      <h2>Corpus</h2>
+      <div class="row">
+        <button class="btn primary" id="btnLoadDemo">Load committed demo corpus</button>
+        <span class="faint">or</span>
+        <input type="file" id="fileInput" accept="application/pdf" />
+        <button class="btn" id="btnUpload">Upload PDF</button>
+      </div>
+      <p class="faint" style="margin-bottom:0">
+        Text-layer PDFs only — scanned documents are rejected with a message rather than silently
+        producing an empty index. Build the demo PDF with
+        <span class="mono">dotnet run --project tools/RagLadder.CorpusBuilder</span>.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Documents</h2>
+      <div id="docList" class="muted">loading…</div>
+    </div>
+
+    <div class="card">
+      <h2>Health</h2>
+      <div id="healthDetail" class="muted">loading…</div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ Process -->
+  <section class="panel" id="panel-process">
+    <div class="card">
+      <h2>Run the pipeline</h2>
+      <div class="row">
+        <label class="chk">Mode
+          <select id="procMode">
+            <option value="thorough">thorough (with verification)</option>
+            <option value="quick">quick (skip verification)</option>
+          </select>
+        </label>
+        <label class="chk"><input type="checkbox" id="procSkipReview" /> skip the review gate</label>
+        <label class="chk"><input type="checkbox" id="procSkipExtraction" /> vectors only, no graph</label>
+        <label class="chk"><input type="checkbox" id="procSkipSummaries" /> skip LLM section summaries</label>
+        <label class="chk">Chunk cap <input type="number" id="procCap" value="120" min="1" max="2000" style="width:5em" /></label>
+        <label class="chk"><input type="checkbox" id="procSpread" checked /> spread sampling</label>
+        <button class="btn primary" id="btnProcess">Process</button>
+      </div>
+      <p class="faint" style="margin:8px 0 0">
+        Extraction is the expensive part: roughly one model call per chunk, plus a batched
+        verification pass in thorough mode. Everything is cached by content hash, so reprocessing
+        an unchanged document costs nothing.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Progress</h2>
+      <div id="procStatus" class="muted">idle</div>
+      <div class="bar" style="margin:10px 0"><div id="procBar" style="width:0"></div></div>
+      <ul class="warnings" id="procWarnings"></ul>
+    </div>
+
+    <div class="card">
+      <h2>Sections and chunks</h2>
+      <div id="procSections" class="muted">—</div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ Review -->
+  <section class="panel" id="panel-review">
+    <div class="card">
+      <h2>Extraction funnel</h2>
+      <div class="funnel" id="revFunnel"></div>
+      <p class="faint" style="margin:10px 0 0" id="revFunnelNote"></p>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Quality metrics</h2>
+        <div id="revMetrics" class="muted">—</div>
+      </div>
+      <div class="card">
+        <h2>Entity resolution</h2>
+        <div id="revMerges" class="muted">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Proposed triples</h2>
+      <div class="row hide-in-present" style="margin-bottom:10px">
+        <button class="btn" id="btnAcceptAll">Accept all</button>
+        <label class="chk">Reject below confidence
+          <input type="number" id="revFloor" value="0.6" step="0.05" min="0" max="1" style="width:5em" />
+        </label>
+        <button class="btn" id="btnRejectBelow">Apply</button>
+        <span class="spacer"></span>
+        <span id="revCounts" class="muted"></span>
+        <button class="btn primary" id="btnCommit">Commit to graph</button>
+      </div>
+      <div id="revTriples" class="muted">—</div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ Ask (chat) -->
+  <section class="panel" id="panel-ask">
+    <div class="chat">
+      <div class="chat-log" id="chatLog">
+        <div class="chat-empty" id="chatEmpty">
+          Pick a stage, ask a question. The same question at two rungs is the whole demo.
+        </div>
+      </div>
+
+      <div class="chat-composer">
+        <div class="stage-bar" id="stageBar"></div>
+        <div id="stageTeaches" class="faint"></div>
+        <div class="chat-input-row">
+          <textarea id="askQuestion" rows="1" placeholder="Ask a question…  (Enter to send, Shift+Enter for a new line)"></textarea>
+          <button class="btn primary" id="btnAsk">Send</button>
+        </div>
+        <div class="chat-tools hide-in-present">
+          <button class="btn" id="btnClearChat">Clear</button>
+          <label class="chk"><input type="checkbox" id="chatShowWork" /> show the work</label>
+          <span class="faint" id="askCacheNote"></span>
+        </div>
+      </div>
+    </div>
+
+    <details class="card hide-in-present" id="togglesCard">
+      <summary>Flags — override the stage preset</summary>
+      <div class="row" style="margin-top:10px">
+        <label class="chk">collection
+          <select id="optCollection">
+            <option>fixed</option><option selected>recursive</option><option>contextual</option>
+          </select>
+        </label>
+        <label class="chk">topK <input type="number" id="optTopK" value="5" min="1" max="25" style="width:4.5em" /></label>
+        <label class="chk">candidateK <input type="number" id="optCandidateK" value="50" min="1" max="200" style="width:5em" /></label>
+        <label class="chk"><input type="checkbox" id="optFilter" /> metadata filter</label>
+        <label class="chk"><input type="checkbox" id="optHybrid" /> hybrid</label>
+        <label class="chk"><input type="checkbox" id="optRerank" /> rerank</label>
+        <label class="chk"><input type="checkbox" id="optRewrite" /> query rewrite</label>
+        <label class="chk"><input type="checkbox" id="optCitations" /> citations</label>
+        <label class="chk"><input type="checkbox" id="optAgentic" /> agentic</label>
+        <label class="chk"><input type="checkbox" id="optRouter" /> router</label>
+        <label class="chk"><input type="checkbox" id="optSkipRetrieval" /> no retrieval (stage 0)</label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="chk"><input type="checkbox" id="optGraph" /> graph expansion</label>
+        <label class="chk">mode
+          <select id="optGraphMode"><option>expand</option><option>path</option><option>aggregate</option></select>
+        </label>
+        <label class="chk"><input type="checkbox" id="optHopNext" checked /> :NEXT</label>
+        <label class="chk"><input type="checkbox" id="optHopParent" checked /> section</label>
+        <label class="chk"><input type="checkbox" id="optHopEntity" /> entity</label>
+        <label class="chk"><input type="checkbox" id="optHopRel" /> entity-rel</label>
+        <label class="chk">min edge conf <input type="number" id="optMinConf" value="0.6" step="0.05" min="0" max="1" style="width:5em" /></label>
+        <label class="chk">max hops <input type="number" id="optMaxHops" value="6" min="1" max="20" style="width:4.5em" /></label>
+        <label class="chk"><input type="checkbox" id="optDerived" checked /> include derived edges</label>
+        <button class="btn" id="btnAskCustom">Send with these flags</button>
+      </div>
+    </details>
+  </section>
+
+  <!-- ------------------------------------------------ Compare -->
+  <section class="panel" id="panel-compare">
+    <div class="card">
+      <h2>Same question, two rungs</h2>
+      <textarea id="cmpQuestion" rows="2" placeholder="How many features has Arjun Sivalingam appeared in as Nick Fury?"></textarea>
+      <div class="row" style="margin-top:8px">
+        <label class="chk">left <select id="cmpLeft"></select></label>
+        <label class="chk">right <select id="cmpRight"></select></label>
+        <button class="btn primary" id="btnCompare">Compare</button>
+        <span class="faint">Each rung runs independently — no shared cache, no shared retrieval.</span>
+      </div>
+    </div>
+    <div class="grid2" id="cmpResult"></div>
+  </section>
+
+  <!-- ------------------------------------------------ Eval -->
+  <section class="panel" id="panel-eval">
+    <div class="card">
+      <h2>Golden set</h2>
+      <div class="row">
+        <button class="btn" id="btnLoadGolden">Load hand-authored set</button>
+        <button class="btn" id="btnGenGolden">Generate from this document</button>
+        <span class="spacer"></span>
+        <label class="chk">stages <input type="text" id="evalStages" value="0-11" style="width:7em" /></label>
+        <button class="btn primary" id="btnRunEval">Run eval</button>
+      </div>
+      <div id="goldenSummary" class="muted" style="margin-top:8px">—</div>
+    </div>
+
+    <div class="card">
+      <h2>Pass rate by question type</h2>
+      <p class="faint" style="margin-top:0">
+        The overall curve is smooth and teaches nothing. The per-type breakdown is where the
+        lesson is: watch stage 4 fix <span class="mono">exact_figure</span> while doing nothing
+        at all for <span class="mono">path</span>.
+      </p>
+      <div id="evalHeat" class="muted">no run yet</div>
+    </div>
+
+    <div class="card">
+      <h2>Regressions</h2>
+      <p class="faint" style="margin-top:0">Rungs that made something worse. Find at least one and put it on a slide.</p>
+      <div id="evalRegressions" class="muted">—</div>
+    </div>
+
+    <div class="card">
+      <h2>Cells</h2>
+      <div id="evalCells" class="muted">—</div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ Graph -->
+  <section class="panel" id="panel-graph">
+    <div class="card">
+      <h2>Knowledge graph</h2>
+      <div class="row hide-in-present">
+        <label class="chk">min confidence
+          <input type="range" id="graphConf" min="0" max="1" step="0.05" value="0" />
+          <span id="graphConfVal" class="mono">0.00</span>
+        </label>
+        <label class="chk"><input type="checkbox" id="graphDerived" checked /> derived edges</label>
+        <label class="chk">limit <input type="number" id="graphLimit" value="400" min="20" max="3000" style="width:6em" /></label>
+        <button class="btn" id="btnGraphReload">Reload</button>
+        <span class="spacer"></span>
+        <span id="graphStats" class="muted"></span>
+      </div>
+      <div class="legend" id="graphLegend" style="margin:10px 0"></div>
+      <svg class="graph" id="graphSvg"></svg>
+      <div id="graphEdgeDetail" class="muted" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Aggregations <span class="faint">— pure Cypher, no vector search</span></h2>
+      <div class="row" id="aggButtons"></div>
+      <div id="aggResult" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ Explore -->
+  <section class="panel" id="panel-explore">
+    <div class="card">
+      <h2>How are these two connected?</h2>
+      <div class="row">
+        <select id="expFrom" style="min-width:230px"></select>
+        <span class="faint">→</span>
+        <select id="expTo" style="min-width:230px"></select>
+        <button class="btn primary" id="btnConnect">Connect</button>
+        <button class="btn" id="btnRandomPair">Random pair</button>
+        <label class="chk">max hops <input type="number" id="expHops" value="8" min="1" max="20" style="width:4.5em" /></label>
+      </div>
+      <p class="faint" style="margin:8px 0 0">
+        Vector search cannot answer this at any <span class="mono">k</span>. The answer is
+        constructed from the traversal, not generated from retrieved text — the model's only job
+        would be to phrase a path the graph already computed.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="pathchain" id="pathChain"></div>
+      <div id="pathNarrative" class="answer" style="display:none"></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

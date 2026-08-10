@@ -1,0 +1,57 @@
+{
+  "version": "film-v3",
+
+  "//": "The domain ontology (spec 6.2 / 6.3). Deliberately constrained: open extraction is the primary source of graph noise. Edit this file to change what the extractor is allowed to produce; the app falls back to an identical built-in ontology if the file is missing or malformed. Changing `version` invalidates the extraction cache, so every chunk will be re-extracted.",
+
+  "nodeTypes": [
+    { "name": "Film", "keyFormat": "film:{slug}:{year}", "notes": "Year is part of the key - remakes share titles." },
+    { "name": "TVSeries", "keyFormat": "series:{slug}" },
+    { "name": "Season", "keyFormat": "season:{seriesSlug}:{n}" },
+    { "name": "Episode", "keyFormat": "episode:{seriesSlug}:s{n}e{m}" },
+    { "name": "Person", "keyFormat": "person:{slug}", "notes": "Real humans (fictional ones, in this corpus)." },
+    { "name": "Character", "keyFormat": "character:{slug}:{workSlug}", "notes": "Scoped to its work - the same character name can recur across unrelated titles." },
+    { "name": "Studio", "keyFormat": "studio:{slug}", "notes": "Production company or distributor." },
+    { "name": "Franchise", "keyFormat": "franchise:{slug}" },
+    { "name": "Genre", "keyFormat": "genre:{slug}", "notes": "Closed vocabulary - see `genres` below." },
+    { "name": "Award", "keyFormat": "award:{slug}", "notes": "The ceremony, e.g. Golden Lotus." },
+    { "name": "AwardCategory", "keyFormat": "awardcat:{awardSlug}:{slug}" },
+    { "name": "Festival", "keyFormat": "festival:{slug}" },
+    { "name": "Location", "keyFormat": "location:{slug}", "notes": "Filming locations." },
+    { "name": "Work", "keyFormat": "work:{slug}", "notes": "Source material for ADAPTED_FROM." }
+  ],
+
+  "relationTypes": [
+    { "predicate": "ACTED_IN", "from": ["Person"], "to": ["Film", "TVSeries", "Episode"], "properties": ["billing", "creditedAs"] },
+    { "predicate": "PLAYED", "from": ["Person"], "to": ["Character"], "properties": [] },
+    { "predicate": "APPEARS_IN", "from": ["Character"], "to": ["Film", "TVSeries", "Episode"], "properties": [] },
+    { "predicate": "DIRECTED", "from": ["Person"], "to": ["Film", "TVSeries", "Episode"], "properties": [] },
+    { "predicate": "WROTE", "from": ["Person"], "to": ["Film", "TVSeries", "Episode"], "properties": ["role"] },
+    { "predicate": "PRODUCED", "from": ["Person"], "to": ["Film", "TVSeries"], "properties": ["role"] },
+    { "predicate": "COMPOSED_FOR", "from": ["Person"], "to": ["Film", "TVSeries"], "properties": [] },
+    { "predicate": "SHOT_BY", "from": ["Film", "TVSeries"], "to": ["Person"], "properties": [], "notes": "Cinematographer. Runs work -> person." },
+    { "predicate": "EDITED_BY", "from": ["Film", "TVSeries"], "to": ["Person"], "properties": [] },
+    { "predicate": "PRODUCED_BY", "from": ["Film", "TVSeries"], "to": ["Studio"], "properties": [] },
+    { "predicate": "DISTRIBUTED_BY", "from": ["Film", "TVSeries"], "to": ["Studio"], "properties": ["market"] },
+    { "predicate": "PART_OF_FRANCHISE", "from": ["Film", "TVSeries"], "to": ["Franchise"], "properties": ["order"] },
+    { "predicate": "SEQUEL_TO", "from": ["Film"], "to": ["Film"], "properties": [], "notes": "Ordered chain - traversable like :NEXT." },
+    { "predicate": "PREQUEL_TO", "from": ["Film"], "to": ["Film"], "properties": [] },
+    { "predicate": "REMAKE_OF", "from": ["Film"], "to": ["Film"], "properties": [], "notes": "Powers the title-collision trap." },
+    { "predicate": "SPINOFF_OF", "from": ["TVSeries"], "to": ["Film", "TVSeries"], "properties": [] },
+    { "predicate": "ADAPTED_FROM", "from": ["Film", "TVSeries"], "to": ["Work"], "properties": [] },
+    { "predicate": "HAS_SEASON", "from": ["TVSeries"], "to": ["Season"], "properties": [] },
+    { "predicate": "HAS_EPISODE", "from": ["Season"], "to": ["Episode"], "properties": ["number"] },
+    { "predicate": "HAS_GENRE", "from": ["Film", "TVSeries"], "to": ["Genre"], "properties": [] },
+    { "predicate": "NOMINATED_FOR", "from": ["Person", "Film", "TVSeries"], "to": ["AwardCategory"], "properties": ["year"] },
+    { "predicate": "WON", "from": ["Person", "Film", "TVSeries"], "to": ["AwardCategory"], "properties": ["year"] },
+    { "predicate": "PREMIERED_AT", "from": ["Film"], "to": ["Festival"], "properties": ["year"] },
+    { "predicate": "FILMED_AT", "from": ["Film", "TVSeries"], "to": ["Location"], "properties": [] },
+    { "predicate": "ACQUIRED", "from": ["Studio"], "to": ["Studio"], "properties": ["year"] },
+    { "predicate": "RELATED_TO", "from": ["any"], "to": ["any"], "properties": [], "notes": "Fallback - deliberately last resort. Above ~20% share means the ontology is not being applied." }
+  ],
+
+  "genres": [
+    "action", "adventure", "animation", "comedy", "crime", "documentary", "drama",
+    "fantasy", "horror", "musical", "mystery", "romance", "science-fiction",
+    "thriller", "war", "western"
+  ]
+}

@@ -1,0 +1,483 @@
+{
+  "name": "serendib-dossier-hand-authored",
+  "//": "48 hand-authored questions, four per type, plus a mandatory ungrounded control group of four. Every answer is taken verbatim from the corpus. The control group asks about real films absent from the corpus: every stage 1-11 must refuse it and stage 0 must not. That group is the honesty check for the entire demo (spec 8).",
+  "//types": "The spec lists eleven types; name_collision is a twelfth, added to cover trap 12 as the corpus appendix defines it (Loki is both a Character and a TVSeries). Unlike the others it is fixed by entity resolution rather than by any rung, so its heatmap row should be flat across the ladder - which is itself the point worth showing.",
+
+  "questions": [
+    {
+      "id": "q001",
+      "question": "Who directed Iron Man (2008)?",
+      "type": "simple_lookup",
+      "expectedAnswerContains": ["Sunil Bandara"],
+      "expectedSections": ["Iron Man (2008)"],
+      "passesFromStage": 1
+    },
+    {
+      "id": "q002",
+      "question": "Which performer portrays Nick Fury in the Sinharaja features?",
+      "type": "simple_lookup",
+      "expectedAnswerContains": ["Arjun Sivalingam"],
+      "expectedSections": ["Talent Record: Arjun Sivalingam"],
+      "passesFromStage": 1
+    },
+    {
+      "id": "q003",
+      "question": "Which distributor released The Incredible Hulk (2008)?",
+      "type": "simple_lookup",
+      "expectedAnswerContains": ["Mahaweli Pictures"],
+      "expectedSections": ["The Incredible Hulk (2008)"],
+      "passesFromStage": 1
+    },
+    {
+      "id": "q004",
+      "question": "Who directed Black Panther (2018)?",
+      "type": "simple_lookup",
+      "expectedAnswerContains": ["Roshen Coorey"],
+      "expectedSections": ["Black Panther (2018)"],
+      "passesFromStage": 1
+    },
+
+    {
+      "id": "q005",
+      "question": "What was the domestic opening weekend gross for Avengers: Endgame?",
+      "type": "exact_figure",
+      "expectedAnswerContains": ["3,571,150,070"],
+      "expectedSections": ["Box Office Record: Avengers: Endgame"],
+      "trap": 3,
+      "passesFromStage": 4,
+      "notes": "Embeddings are blind to exact figures. The keyword arm of hybrid search is what finds this."
+    },
+    {
+      "id": "q006",
+      "question": "What was the worldwide total gross of Deadpool & Wolverine?",
+      "type": "exact_figure",
+      "expectedAnswerContains": ["40,483,000,000"],
+      "expectedSections": ["Box Office Record: Deadpool & Wolverine"],
+      "trap": 3,
+      "passesFromStage": 4
+    },
+    {
+      "id": "q007",
+      "question": "What was the reported production budget for Avengers: Endgame?",
+      "type": "exact_figure",
+      "expectedAnswerContains": ["3,580,000,000"],
+      "expectedSections": ["Box Office Record: Avengers: Endgame"],
+      "trap": 3,
+      "passesFromStage": 4
+    },
+    {
+      "id": "q008",
+      "question": "On how many domestic screens did Avengers: Endgame open?",
+      "type": "exact_figure",
+      "expectedAnswerContains": ["4,664"],
+      "expectedSections": ["Box Office Record: Avengers: Endgame"],
+      "trap": 3,
+      "passesFromStage": 4
+    },
+
+    {
+      "id": "q009",
+      "question": "How many features has Arjun Sivalingam appeared in as Nick Fury?",
+      "type": "boundary",
+      "expectedAnswerContains": ["12"],
+      "expectedSections": ["Talent Record: Arjun Sivalingam"],
+      "trap": 1,
+      "passesFromStage": 2,
+      "notes": "The chronological credit list is split across a forced page boundary. A fixed 400-token chunk with zero overlap can only ever see half of it."
+    },
+    {
+      "id": "q010",
+      "question": "What is the most recent feature in Arjun Sivalingam's chronological credit list?",
+      "type": "boundary",
+      "expectedAnswerContains": ["The Marvels"],
+      "expectedSections": ["Talent Record: Arjun Sivalingam"],
+      "trap": 1,
+      "passesFromStage": 2
+    },
+    {
+      "id": "q011",
+      "question": "Which Arjun Sivalingam feature credits were released in 2019?",
+      "type": "boundary",
+      "expectedAnswerContains": ["Captain Marvel", "Far From Home", "Endgame"],
+      "expectedSections": ["Talent Record: Arjun Sivalingam"],
+      "trap": 1,
+      "passesFromStage": 2
+    },
+    {
+      "id": "q012",
+      "question": "In Kasun Jayawardena's Sinharaja continuity credits, which title follows Captain America: Civil War?",
+      "type": "boundary",
+      "expectedAnswerContains": ["Infinity War"],
+      "expectedSections": ["Talent Record: Kasun Jayawardena"],
+      "passesFromStage": 2
+    },
+
+    {
+      "id": "q013",
+      "question": "Who currently plays James Rhodes?",
+      "type": "superseded",
+      "expectedAnswerContains": ["Harish Selvaratnam"],
+      "expectedSections": ["Casting History: Recast Roles"],
+      "trap": 2,
+      "passesFromStage": 3,
+      "notes": "Section 4 still lists Elango Ponnambalam for the 2008 film. Without a date-aware filter, retrieval blends the superseded credit with the current one."
+    },
+    {
+      "id": "q014",
+      "question": "Who plays Bruce Banner after the role was recast?",
+      "type": "superseded",
+      "expectedAnswerContains": ["Dinesh Amarasinghe"],
+      "expectedSections": ["Casting History: Recast Roles"],
+      "trap": 2,
+      "passesFromStage": 3
+    },
+    {
+      "id": "q015",
+      "question": "Who plays Thunderbolt Ross in Captain America: Brave New World (2025)?",
+      "type": "superseded",
+      "expectedAnswerContains": ["Lionel Foenander"],
+      "expectedSections": ["Casting History: Recast Roles"],
+      "trap": 2,
+      "passesFromStage": 3
+    },
+    {
+      "id": "q016",
+      "question": "Who portrayed James Rhodes in Iron Man (2008)?",
+      "type": "superseded",
+      "expectedAnswerContains": ["Elango Ponnambalam"],
+      "expectedSections": ["Iron Man (2008)"],
+      "trap": 2,
+      "passesFromStage": 3
+    },
+
+    {
+      "id": "q017",
+      "question": "Who did the music for Black Panther?",
+      "type": "terse",
+      "expectedAnswerContains": ["Nadun Chandrasiri"],
+      "expectedSections": ["Black Panther (2018)"],
+      "trap": 5,
+      "passesFromStage": 6,
+      "notes": "The corpus says 'original score composed by'. The question says 'music'. Query rewrite closes the gap."
+    },
+    {
+      "id": "q018",
+      "question": "Who did the music for Iron Man?",
+      "type": "terse",
+      "expectedAnswerContains": ["Kavinda Galappaththi"],
+      "expectedSections": ["Iron Man (2008)"],
+      "trap": 4,
+      "passesFromStage": 5,
+      "notes": "The composer credit sits last in a long crew block, so it ranks poorly on cosine until the cross-encoder reranks."
+    },
+    {
+      "id": "q019",
+      "question": "Who filmed Captain America: Civil War?",
+      "type": "terse",
+      "expectedAnswerContains": ["Nirmal Gnanasekaran"],
+      "expectedSections": ["Captain America: Civil War (2016)"],
+      "trap": 5,
+      "passesFromStage": 6
+    },
+    {
+      "id": "q020",
+      "question": "Who was behind the camera on Black Panther?",
+      "type": "terse",
+      "expectedAnswerContains": ["Ruvini Hettiarachchi"],
+      "expectedSections": ["Black Panther (2018)"],
+      "trap": 5,
+      "passesFromStage": 6
+    },
+
+    {
+      "id": "q021",
+      "question": "Which WandaVision episode contains the confrontation with the neighbour?",
+      "type": "orphan_context",
+      "expectedAnswerContains": ["seven"],
+      "expectedSections": ["Episode Record"],
+      "trap": 6,
+      "passesFromStage": 7,
+      "notes": "The chunk reads 'She confronts the neighbour directly in this episode' and names neither the series nor the character. Only the contextual prefix supplies the referent."
+    },
+    {
+      "id": "q022",
+      "question": "Who wrote the WandaVision episode in which she confronts the neighbour?",
+      "type": "orphan_context",
+      "expectedAnswerContains": ["Cameron Squires"],
+      "expectedSections": ["Episode Record"],
+      "trap": 6,
+      "passesFromStage": 7
+    },
+    {
+      "id": "q023",
+      "question": "When was the WandaVision episode with the neighbour confrontation first released?",
+      "type": "orphan_context",
+      "expectedAnswerContains": ["19 February 2021"],
+      "expectedSections": ["Episode Record"],
+      "trap": 6,
+      "passesFromStage": 7
+    },
+    {
+      "id": "q024",
+      "question": "Which WandaVision episode was nominated for Outstanding Writing for a Limited Series?",
+      "type": "orphan_context",
+      "expectedAnswerContains": ["eight"],
+      "expectedSections": ["Episode Record"],
+      "trap": 6,
+      "passesFromStage": 7
+    },
+
+    {
+      "id": "q025",
+      "question": "Who played Johnny Storm in Fantastic Four (2005)?",
+      "type": "title_collision",
+      "expectedAnswerContains": ["Kasun Jayawardena"],
+      "expectedSections": ["Fantastic Four (2005)"],
+      "trap": 11,
+      "passesFromStage": 3,
+      "notes": "Two unrelated films share the title Fantastic Four. Without a year filter, retrieval blends the 2005 and 2015 casts."
+    },
+    {
+      "id": "q026",
+      "question": "Who played Johnny Storm in Fantastic Four (2015)?",
+      "type": "title_collision",
+      "expectedAnswerContains": ["Vijayan Nadarajah"],
+      "expectedSections": ["Fantastic Four (2015)"],
+      "trap": 11,
+      "passesFromStage": 3
+    },
+    {
+      "id": "q027",
+      "question": "Who directed Fantastic Four (2015)?",
+      "type": "title_collision",
+      "expectedAnswerContains": ["Josh Trank Weerakoon"],
+      "expectedSections": ["Fantastic Four (2015)"],
+      "trap": 11,
+      "passesFromStage": 3
+    },
+    {
+      "id": "q028",
+      "question": "Who played Reed Richards in the 2005 Fantastic Four?",
+      "type": "title_collision",
+      "expectedAnswerContains": ["Sunil Gunatilleke"],
+      "expectedSections": ["Fantastic Four (2005)"],
+      "trap": 11,
+      "passesFromStage": 3
+    },
+
+    {
+      "id": "q029",
+      "question": "Compare the domestic opening weekends of Avengers: Endgame and Avengers: Infinity War. Which opened bigger?",
+      "type": "multi_part",
+      "expectedAnswerContains": ["Endgame", "3,571,150,070", "2,576,981,830"],
+      "expectedSections": ["Box Office Record: Avengers: Endgame"],
+      "trap": 7,
+      "passesFromStage": 9,
+      "notes": "One search cannot serve both halves reliably. The agentic loop issues one per part."
+    },
+    {
+      "id": "q030",
+      "question": "Which grossed more worldwide, Black Panther (2018) or Captain America: Civil War (2016)?",
+      "type": "multi_part",
+      "expectedAnswerContains": ["Black Panther"],
+      "expectedSections": ["Black Panther (2018)", "Captain America: Civil War (2016)"],
+      "trap": 7,
+      "passesFromStage": 9
+    },
+    {
+      "id": "q031",
+      "question": "Name both the composer and the cinematographer of Avengers: Endgame.",
+      "type": "multi_part",
+      "expectedAnswerContains": ["Suranga Bogollagama", "Nirmal Gnanasekaran"],
+      "expectedSections": ["Avengers: Endgame (2019)"],
+      "trap": 7,
+      "passesFromStage": 9
+    },
+    {
+      "id": "q032",
+      "question": "Who composed the score for Iron Man (2008), and who composed it for Iron Man 2 (2010)?",
+      "type": "multi_part",
+      "expectedAnswerContains": ["Kavinda Galappaththi", "Gayan Yapa"],
+      "expectedSections": ["Iron Man (2008)", "Iron Man 2 (2010)"],
+      "trap": 7,
+      "passesFromStage": 9
+    },
+
+    {
+      "id": "q033",
+      "question": "Which cinematographer has shot more than one film for the Ranatunga brothers?",
+      "type": "multi_hop",
+      "expectedAnswerContains": ["Nirmal Gnanasekaran"],
+      "expectedSections": ["Recurring Creative Partnerships"],
+      "trap": 8,
+      "passesFromStage": 10,
+      "notes": "Two traversals: director to film, film to cinematographer. No amount of similarity gets there."
+    },
+    {
+      "id": "q034",
+      "question": "Which composer scored both Avengers: Infinity War and Avengers: Endgame?",
+      "type": "multi_hop",
+      "expectedAnswerContains": ["Suranga Bogollagama"],
+      "expectedSections": ["Recurring Creative Partnerships"],
+      "trap": 8,
+      "passesFromStage": 10
+    },
+    {
+      "id": "q035",
+      "question": "Which cinematographer returned for a direct sequel outside the Ranatunga unit?",
+      "type": "multi_hop",
+      "expectedAnswerContains": ["Ruvini Hettiarachchi"],
+      "expectedSections": ["Recurring Creative Partnerships"],
+      "trap": 8,
+      "passesFromStage": 10
+    },
+    {
+      "id": "q036",
+      "question": "Which performer holds principal roles in both the Nilwala and Sinharaja continuities?",
+      "type": "multi_hop",
+      "expectedAnswerContains": ["Kasun Jayawardena"],
+      "expectedSections": ["Talent Record: Kasun Jayawardena"],
+      "trap": 8,
+      "passesFromStage": 10
+    },
+
+    {
+      "id": "q037",
+      "question": "How is Sunil Gunatilleke connected to Thevan Rasiah?",
+      "type": "path",
+      "expectedPathContains": ["Kasun Jayawardena"],
+      "trap": 10,
+      "passesFromStage": 10,
+      "notes": "They never shared a title. The bridge is Kasun Jayawardena, the only performer in both continuities: Fantastic Four (2005) to Captain America: Civil War (2016). Four hops, two continuities, two studios. Unanswerable below stage 10 in path mode."
+    },
+    {
+      "id": "q038",
+      "question": "How is Vijayan Nadarajah connected to Sanjaya Wickramasinghe?",
+      "type": "path",
+      "expectedPathContains": ["Black Panther"],
+      "trap": 10,
+      "passesFromStage": 10,
+      "notes": "Nadarajah's only Sinharaja credit is Black Panther, so any shortest path must cross it."
+    },
+    {
+      "id": "q039",
+      "question": "How is Elango Ponnambalam connected to Harish Selvaratnam?",
+      "type": "path",
+      "expectedPathContains": ["Iron Man"],
+      "trap": 10,
+      "passesFromStage": 10,
+      "notes": "The two performers of James Rhodes never shared a title; the link runs through the Iron Man films they each appeared in."
+    },
+    {
+      "id": "q040",
+      "question": "How is Desmond Ludowyk connected to Arjun Sivalingam?",
+      "type": "path",
+      "expectedPathContains": ["Incredible Hulk"],
+      "trap": 10,
+      "passesFromStage": 10,
+      "notes": "Ludowyk's only credit is The Incredible Hulk (2008), so every path leaves through it."
+    },
+
+    {
+      "id": "q041",
+      "question": "Which studio released the most titles in this dossier?",
+      "type": "aggregation",
+      "expectedAnswerContains": ["Sinharaja"],
+      "trap": 9,
+      "passesFromStage": 10,
+      "notes": "Unanswerable from top-k at any k. Trivial in Cypher."
+    },
+    {
+      "id": "q042",
+      "question": "Which director and cinematographer pairing recurs across the most films?",
+      "type": "aggregation",
+      "expectedAnswerContains": ["Gnanasekaran"],
+      "trap": 9,
+      "passesFromStage": 10
+    },
+    {
+      "id": "q043",
+      "question": "Which studio produced the most titles released in 2018?",
+      "type": "aggregation",
+      "expectedAnswerContains": ["Sinharaja"],
+      "trap": 9,
+      "passesFromStage": 10
+    },
+    {
+      "id": "q044",
+      "question": "Which studio holds the most Golden Lotus wins across the dossier?",
+      "type": "aggregation",
+      "expectedAnswerContains": ["Sinharaja"],
+      "trap": 9,
+      "passesFromStage": 10
+    },
+
+    {
+      "id": "q045",
+      "question": "How many episodes does Loki have in total?",
+      "type": "name_collision",
+      "expectedAnswerContains": ["twelve"],
+      "expectedSections": ["Loki (2021"],
+      "trap": 12,
+      "passesFromStage": 1,
+      "notes": "Trap 12, as the corpus states it: Loki is both a Character and a TVSeries. Nothing on the ladder fixes this — entity resolution does, by refusing to merge across types. If the two ever collapse into one node the episode count becomes unanswerable and the graph is simply wrong. Retrieval difficulty here is incidental and embedder-dependent: on the deterministic dev embedder these questions only surface section 66 once the stage-4 keyword arm is on."
+    },
+    {
+      "id": "q046",
+      "question": "Which performer portrays the character Loki?",
+      "type": "name_collision",
+      "expectedAnswerContains": ["Lahiru Senanayake"],
+      "expectedSections": ["Loki (2021"],
+      "trap": 12,
+      "passesFromStage": 1,
+      "notes": "The performer, the character and the series all carry the name Loki. Answering this requires holding three distinct nodes apart."
+    },
+    {
+      "id": "q047",
+      "question": "Who composed the score for both seasons of the Loki series?",
+      "type": "name_collision",
+      "expectedAnswerContains": ["Vindya Udugama"],
+      "expectedSections": ["Loki (2021"],
+      "trap": 12,
+      "passesFromStage": 1
+    },
+    {
+      "id": "q048",
+      "question": "Who directed season one of the Loki series?",
+      "type": "name_collision",
+      "expectedAnswerContains": ["Kavindi Herron"],
+      "expectedSections": ["Loki (2021"],
+      "trap": 12,
+      "passesFromStage": 1
+    },
+
+    {
+      "id": "u001",
+      "question": "Who directed Oppenheimer?",
+      "type": "ungrounded",
+      "expectRefusal": true,
+      "notes": "CONTROL GROUP. A real film absent from the corpus. Every stage 1-11 must refuse. Stage 0 must answer confidently — that contrast is the whole point of rung 0."
+    },
+    {
+      "id": "u002",
+      "question": "How much did Barbie make at the worldwide box office?",
+      "type": "ungrounded",
+      "expectRefusal": true,
+      "notes": "CONTROL GROUP. Absent from the corpus."
+    },
+    {
+      "id": "u003",
+      "question": "Who composed the score for Dune: Part Two?",
+      "type": "ungrounded",
+      "expectRefusal": true,
+      "notes": "CONTROL GROUP. Absent from the corpus."
+    },
+    {
+      "id": "u004",
+      "question": "Which studio produced Everything Everywhere All at Once?",
+      "type": "ungrounded",
+      "expectRefusal": true,
+      "notes": "CONTROL GROUP. Absent from the corpus."
+    }
+  ]
+}
