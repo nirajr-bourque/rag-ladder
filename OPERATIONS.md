@@ -24,6 +24,85 @@ back.
 
 ---
 
+## From nothing to a working demo
+
+The whole path, assuming a machine with .NET 9, PowerShell 7 and Docker and nothing else. Sections
+1–18 explain every step and every alternative; this is the version that just works.
+
+```powershell
+git clone https://github.com/nirajr-bourque/rag-ladder.git
+cd rag-ladder
+dotnet build
+
+# 1. the containers: Ollama for chat and embeddings, Qdrant for vectors, Neo4j for the graph
+docker compose up -d
+pwsh tools/setup-ollama.ps1 -Apply          # pulls qwen2.5:3b and all-minilm, ~2.5 GB
+
+# 2. the demo PDF, which is generated rather than committed
+dotnet run --project tools/RagLadder.CorpusBuilder -- `
+  --input spiderman-corpus-seed.md --output corpus/demo/spiderman-seed.pdf
+
+# 3. point the app at those containers (this file is gitignored, so a fresh clone has no copy)
+#    see below for its contents
+
+# 4. run it, and leave it running
+dotnet run --project src/RagLadder.Api
+
+# 5. in a second terminal: load, index, build the graph, warm the cache
+pwsh tools/bootstrap-demo.ps1
+```
+
+Then open <http://localhost:5099>, go to **Ask**, and type `Who plays Peter Parker?` — see §12.1.
+
+**Step 3 in full.** Write this to `src/RagLadder.Api/appsettings.Development.json`. Without it the
+app silently falls back to SQLite and the stand-in embedder: same UI, same URL, empty graph, and
+the only clue is the health pill reading `degraded`.
+
+```json
+{
+  "RagLadder": {
+    "Providers": {
+      "Vector": "qdrant", "Graph": "neo4j", "Chat": "ollama",
+      "Embedder": "ollama", "Reranker": "llm"
+    },
+    "Neo4j": {
+      "Uri": "bolt://localhost:7687", "User": "neo4j",
+      "Password": "ragladder-demo", "Database": "neo4j"
+    },
+    "Qdrant": { "Url": "http://localhost:6333" },
+    "Ollama": {
+      "BaseUrl": "http://localhost:11434", "ApiKey": "",
+      "ChatModel": "qwen2.5:3b", "ExtractionModel": "qwen2.5:3b"
+    },
+    "Embedding": { "OllamaModel": "all-minilm" }
+  }
+}
+```
+
+`Embedder` and `Reranker` are `ollama` and `llm` rather than `onnx` because the ONNX route needs
+Hugging Face, which is blocked on this network. The Neo4j password is the one in
+`docker-compose.yml` for a container bound to localhost.
+
+**What step 5 does, and why it exists.** `bootstrap-demo.ps1` loads the corpus, indexes it with
+extraction *off*, then imports the committed `response.json` and rebuilds the graph entirely from
+cache. Extracting with the local 3B model instead takes about an hour and yields 8 usable edges;
+the import takes a minute and yields 235, with all seven filters still applied to what comes in.
+Pass `-LocalExtraction` if you want to watch the slow path, `-SkipWarm` to skip the warm-up.
+
+Measured on a clean run:
+
+```
+[2] chunks: fixed 14 · recursive 26 · contextual 26
+[3] FUNNEL  extracted 267 -> grounded 267 -> conformant 267 (0 flipped) -> committed 235
+        126 entities: Person 56, Character 45, Film 13, Location 7, Studio 3, Franchise 2
+[4] all twelve rungs warmed
+```
+
+The warm-up is the slow part — up to half an hour cold, because it answers the question once at
+every rung. It is a one-off: the cache is persisted and survives restarts (§12.3).
+
+---
+
 ## Contents
 
 **Setup** — [1. Check your network](#1-check-your-network) ·
