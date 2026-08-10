@@ -574,16 +574,19 @@ function renderChatAnswer(turn, pending, r) {
   byline.innerHTML = bits.join(' · ');
   turn.appendChild(byline);
 
-  // Evidence stays one click away rather than gone: the demo's whole claim is that every
-  // assertion is inspectable. Hidden by default so the chat reads as a chat.
-  if ($('chatShowWork').checked || r.warnings?.length) {
-    const work = el('details', 'work');
-    if ($('chatShowWork').checked) work.open = true;
-    work.appendChild(el('summary', '', 'show the work — what this rung did, retrieval, graph, prompt'));
-    work.appendChild(renderStageWork(r));
-    work.appendChild(renderAnswer(r, true, true));
-    turn.appendChild(work);
-  }
+  // Every answer carries its own reasoning trail, on every rung.
+  //
+  // This used to be built only when the checkbox was ticked *or* the answer had warnings, which
+  // meant it appeared at stages 0, 8, 9, 10 and 11 — the ones that happen to emit warnings — and
+  // nowhere else. That reads as a bug, and it hides the work on exactly the rungs where the answer
+  // barely changes and the retrieval is the only thing worth looking at. The panel is now always
+  // present; the checkbox decides whether it starts open.
+  const work = el('details', 'work');
+  work.open = $('chatShowWork').checked || !!r.warnings?.length;
+  work.appendChild(el('summary', '', 'show the work — what this rung did, retrieval, graph, prompt'));
+  work.appendChild(renderStageWork(r));
+  work.appendChild(renderAnswer(r, true, true));
+  turn.appendChild(work);
 }
 
 /// The panel that makes every rung legible, not just the ones with a graph or a rewrite.
@@ -1356,6 +1359,12 @@ function wire() {
   $('btnAsk').onclick = () => ask(false);
   $('btnAskCustom').onclick = () => ask(true);
   $('btnCompare').onclick = () => compare();
+
+  // Ticking the box applies to the transcript already on screen, not just to the next answer.
+  // Otherwise you ask, decide you want the detail, tick the box, and nothing happens.
+  $('chatShowWork').onchange = (e) => {
+    document.querySelectorAll('#chatLog details.work').forEach((d) => { d.open = e.target.checked; });
+  };
 
   $('btnClearChat').onclick = () => {
     $('chatLog').replaceChildren(Object.assign(el('div', 'chat-empty'), {

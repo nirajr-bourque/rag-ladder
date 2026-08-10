@@ -22,8 +22,11 @@ things:
     embedder  ok   all-minilm, 384 dims…        <- 2. all five providers ok
     vector    ok   Qdrant reachable, 3 collections.
     graph     ok   Neo4j reachable, 227 nodes.  <- 3. non-zero
-  answers cached: 12/50
+  answers cached: 19/50
     [12 rungs: 0,1,2,3,4,5,6,7,8,9,10,11] Who plays Peter Parker?   <- 4. twelve
+    [ 3 rungs: 9,10,11]                   How is Isuru Obeysekera connected to Nethmi Tomei?
+    [ 2 rungs: 1,2]                       How many features has Niraj Ranasinghe…
+    [ 2 rungs: 5,6]                       Who did the music for Spider-Man: Homecoming?
 ```
 
 **If any of those four is wrong, fix it now** — see [Trouble](#trouble) below. A `degraded` provider
@@ -94,25 +97,72 @@ with their years, because the graph supplies titles and dates that no chunk stat
 The lesson is not "every rung is better". It is that the jump from 0 to 1 is enormous and everything
 after it is refinement.
 
-### Three that flip at a known rung
+### Two more, both measured
 
-| Question | Flips | What it shows |
-|---|---|---|
-| `How many features has Niraj Ranasinghe appeared in as Peter Parker?` | 1 → 2 | Stage 1 chunks by page and sees only credits 1–3, so it answers 3. Stage 2 chunks by section and retrieves all six. |
-| `Who did the music for Spider-Man: Homecoming?` | 5 → 6 | The corpus says "original score composed by". "Music" misses until query expansion is on. |
-| `How is Isuru Obeysekera connected to Nethmi Tomei?` | 9 → 10 | Four hops through a shared film. The two never appear in the same chunk, so vector search cannot answer it at any `k`. The graph answers it directly. |
+**Trap 1 — the split filmography.** Flips at **1 → 2**.
 
-**Know this before you use the counting one.** At stage 2 the model answers **5** when the corpus
-says six. Tick *show the work*: retrieval is correct — Section 14 comes back whole, all six credits
-present — and `qwen2.5:3b` then miscounts them. That is a generation limit at 3B, not a retrieval
-failure, and the transition it demonstrates still fires. For a live audience prefer the name
-questions, where a small model is on safer ground.
+> **How many features has Niraj Ranasinghe appeared in as Peter Parker?**
+
+| Stage | Answer |
+|---|---|
+| 1 | *"**3** features… Homecoming (2017), Infinity War (2018), and No Way Home (2021)."* |
+| 2 | *"…has appeared in **5** features."* |
+
+Stage 1 chunks page by page with no overlap, and the corpus splits his six credits across a page
+break, so it can only ever see half the list. Stage 2 chunks by section and retrieves all six.
+
+**Say the caveat out loud.** The corpus says **six**, and stage 2 says five. Tick *show the work*:
+retrieval is correct — Section 14 comes back whole with all six credits — and `qwen2.5:3b` then
+miscounts them. That is a generation limit at 3B, not a retrieval failure. The rung transition it
+demonstrates is real; the arithmetic is not. Owning that is stronger than hoping nobody checks.
+
+**The finale — a connection no chunk contains.** Flips at **10 → 11**.
+
+> **How is Isuru Obeysekera connected to Nethmi Tomei?**
+
+| Stage | Answer |
+|---|---|
+| 9 | `Not found in the provided documents.` |
+| 10 | `Not found in the provided documents.` |
+| 11 | *"Isuru Obeysekera composed for Spider-Man (2002), which starred Rashmi Samaraweera, who acted in Spider-Man: Far From Home (2019), which starred Nethmi Tomei."* |
+
+**This is the best moment in the demo, and it is at stage 11, not stage 10.** The two names never
+appear in the same chunk, so no amount of retrieval finds the link — stages 9 and 10 correctly
+*refuse* rather than inventing something. At stage 11 the router classifies the question as `path`,
+switches the graph from `expand` to `shortestPath`, turns off reranking and the agentic loop as
+irrelevant, and the answer is constructed from the traversal itself rather than generated from
+retrieved text. Four hops.
+
+Tick *show the work* and read the Router card: `classified as path → route graph:path`, applied
+flags `graphMode=path · agentic off · rerank off · hybrid off`. That is the whole argument for
+routing on one screen.
+
+Why stage 10 refuses: its graph mode is always `expand`, which seeds from vector search and walks
+outward. Only the router selects `path`. You can force it at stage 10 through the **Flags** card —
+tick `graph expansion`, set mode to `path`, then *Send with these flags* — which is a good way to
+show that the rung has the capability and only the router knows when to use it.
+
+### One that does not flip, and why that is worth saying
+
+> **Who did the music for Spider-Man: Homecoming?**
+
+Stages 5 and 6 both answer *"Piyal Devendra composed the original score for Spider-Man:
+Homecoming."* — correct at both.
+
+This is trap 5, the colloquial-query trap: the corpus says "original score composed by" and the
+question says "music". It is supposed to need query rewriting. It does not, because the embedding
+model already places "music" near "score". **Do not present this as a flip** — it is a fair
+illustration that a trap you designed on paper may not survive a competent embedder, which is a
+more interesting point than a staged failure.
 
 ### Show the work
 
-Tick **show the work** under the composer. Each answer then opens with *What stage n did* — the
-pipeline as it actually ran, one row per step, with skipped steps shown as **skipped** rather than
-omitted. That absence is the point: it is what makes a low rung legible.
+**Every answer at every rung has a "show the work" panel**, collapsed by default so the chat reads
+as a chat. Tick the box under the composer to open them all — including the ones already on screen.
+
+Each opens with *What stage n did* — the pipeline as it actually ran, one row per step, with steps
+that were *skipped* shown as skipped rather than left out. That absence is the point: it is what
+makes a low rung legible, since stages 1 to 5 otherwise all look like "here are five chunks".
 
 Below it: the query rewrite, the router's decision, the agentic trace, every retrieved chunk with
 scores and rank deltas, the full candidate list, and the exact prompt that was sent.
