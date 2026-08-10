@@ -1,0 +1,1245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The RAG Ladder — twelve rungs, one question</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>%F0%9F%AA%9C</text></svg>" />
+
+<!--
+  A self-contained slide deck for the RAG Ladder talk. One file, no build step, no
+  network: double-click it, or open it with
+  start presentation/rag-ladder.html
+
+  Keys: arrows or space to move; n / p for the next or previous rung, skipping the
+  detail slides; 0-9 to jump to a rung (type 1 then 1 for rung 11); f for
+  fullscreen; ? for the full list.
+
+  55 slides. Rungs are three or four light slides each rather than one dense one:
+  the architecture moment, how it works, what changed. Running short? n / p walks
+  only the architecture slides, which is the talk in its minimum form.
+-->
+
+<style>
+  html, body { margin: 0; padding: 0; }
+  /* ============================================================
+     A deck built to be projected in a dark room, so it commits to a
+     single dark visual world rather than tracking the viewer's theme.
+     Every colour is painted explicitly for that reason.
+
+     Palette: ink ground with projector-amber as the only accent, and a
+     cool blue held in reserve exclusively for the graph — the second
+     index — so the eye learns that blue means "not the vector store".
+     ============================================================ */
+  :root {
+    --ink:      #0D1119;
+    --ink2:     #141A26;
+    --ink3:     #1B2233;
+    --rule:     #29334A;
+    --rule-soft:#1F2637;
+    --paper:    #E9ECF4;
+    --dim:      #98A2BC;
+    --faint:    #667089;
+    --amber:    #EDA93F;
+    --amber-15: rgba(237,169,63,.15);
+    --amber-30: rgba(237,169,63,.30);
+    --graph:    #7FB0EE;
+    --graph-15: rgba(127,176,238,.15);
+    --good:     #63BE93;
+    --bad:      #DB6A54;
+
+    --display: "Bahnschrift", "DIN Alternate", "Franklin Gothic Medium", "Arial Narrow", sans-serif;
+    --body: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Mono", "SF Mono", ui-monospace, Consolas, "DejaVu Sans Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--body);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ---------- the stage: a fixed 16:9 canvas scaled to the viewport ---------- */
+
+  #stage {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  #slide {
+    position: relative;
+    width: 1600px;
+    height: 900px;
+    transform-origin: center center;
+    background: var(--ink);
+    display: flex;
+    flex-direction: column;
+    padding: 54px 68px 34px;
+  }
+
+  /* ---------- slide chrome ---------- */
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 15px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--faint);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .eyebrow .rung {
+    color: var(--amber);
+    border: 1px solid var(--amber-30);
+    background: var(--amber-15);
+    padding: 2px 10px;
+    letter-spacing: .12em;
+  }
+  .eyebrow .rung.graphy { color: var(--graph); border-color: rgba(127,176,238,.34); background: var(--graph-15); }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 92px;
+    line-height: .98;
+    letter-spacing: -.015em;
+    margin: 26px 0 0;
+    text-wrap: balance;
+    max-width: 24ch;
+  }
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 62px;
+    line-height: 1.02;
+    letter-spacing: -.012em;
+    margin: 14px 0 0;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 27px;
+    letter-spacing: .01em;
+    margin: 0 0 10px;
+    color: var(--paper);
+  }
+  .deck-sub {
+    font-size: 26px;
+    color: var(--dim);
+    margin-top: 26px;
+    max-width: 62ch;
+    line-height: 1.5;
+  }
+  p { line-height: 1.55; }
+
+  .lede {
+    font-size: 25px;
+    color: var(--dim);
+    margin: 18px 0 0;
+    max-width: 70ch;
+    line-height: 1.5;
+  }
+  .lede strong { color: var(--paper); font-weight: 600; }
+
+  .body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  /* ---------- the ladder rail ---------- */
+
+  #rail {
+    display: flex;
+    gap: 5px;
+    align-items: stretch;
+    margin-top: 20px;
+    flex: 0 0 auto;
+  }
+  #rail button {
+    flex: 1;
+    background: var(--ink2);
+    border: 1px solid var(--rule-soft);
+    border-radius: 0;
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 7px 0 6px;
+    cursor: pointer;
+    letter-spacing: .06em;
+    transition: background .18s, color .18s, border-color .18s;
+  }
+  #rail button .nm {
+    display: block;
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 4px;
+  }
+  #rail button.past { color: var(--dim); border-color: var(--rule); background: #17202F; }
+  #rail button.past .nm { color: var(--faint); }
+  #rail button.now {
+    color: var(--ink);
+    background: var(--amber);
+    border-color: var(--amber);
+  }
+  #rail button.now .nm { color: rgba(13,17,25,.72); }
+  #rail button:focus-visible { outline: 2px solid var(--graph); outline-offset: 2px; }
+
+  #footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--faint);
+    letter-spacing: .08em;
+    margin-top: 12px;
+    flex: 0 0 auto;
+  }
+
+  /* ---------- stage-slide two-column layout ---------- */
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 42px; flex: 1; min-height: 0; margin-top: 20px; }
+  /* Rung slides: prose left, the growing architecture right. The diagram is the
+     reason the deck exists, so it gets the larger share and the top of the column. */
+  .cols.narrow-left { grid-template-columns: .92fr 1.08fr; }
+  /* The architecture slide: a short statement of what arrived, and the diagram given
+     nearly two thirds of the width so the new component is legible from the back row. */
+  .cols.arch-cols { grid-template-columns: .62fr 1.38fr; }
+  .arch-slot { position: relative; flex: 1 1 auto; min-height: 300px; }
+
+  .adds {
+    border-left: 3px solid var(--amber);
+    background: linear-gradient(90deg, var(--amber-15), transparent 70%);
+    padding: 14px 0 14px 18px;
+    margin: 0 0 22px;
+  }
+  .adds .k {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--amber);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .adds .v { font-size: 25px; line-height: 1.35; color: var(--paper); font-weight: 600; }
+  .adds.big { padding: 22px 0 22px 24px; border-left-width: 4px; }
+  .adds.big .v { font-size: 34px; line-height: 1.28; }
+
+  ul.mech { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 13px; }
+  ul.mech li {
+    font-size: 19.5px;
+    line-height: 1.48;
+    color: var(--dim);
+    padding-left: 22px;
+    position: relative;
+  }
+  /* Detail slides carry at most two points, so the type can be generous. */
+  ul.mech.roomy { gap: 30px; margin-top: 42px; max-width: 52ch; }
+  ul.mech.roomy li { font-size: 27px; line-height: 1.45; padding-left: 30px; }
+  ul.mech.roomy li::before { top: .66em; width: 14px; height: 2px; }
+  ul.mech li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: .62em;
+    width: 9px; height: 1px;
+    background: var(--amber);
+  }
+  ul.mech li strong { color: var(--paper); font-weight: 600; }
+  ul.mech li code, .mono { font-family: var(--mono); font-size: .88em; color: var(--amber); }
+
+  .panel {
+    background: var(--ink2);
+    border: 1px solid var(--rule);
+    padding: 20px 22px;
+  }
+  .panel + .panel { margin-top: 16px; }
+  .panel .plabel {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 12px;
+  }
+
+  .quote {
+    font-size: 21px;
+    line-height: 1.5;
+    color: var(--paper);
+    border-left: 2px solid var(--rule);
+    padding-left: 16px;
+  }
+  .quote em { color: var(--amber); font-style: normal; font-weight: 600; }
+  .quote .wrong { color: var(--bad); font-weight: 600; }
+  .quote .right { color: var(--good); font-weight: 600; }
+
+  table.measured { width: 100%; border-collapse: collapse; font-size: 18px; }
+  table.measured th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--faint);
+    font-weight: 400;
+    padding: 0 10px 9px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  table.measured td {
+    padding: 11px 10px 11px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    color: var(--dim);
+    vertical-align: top;
+    line-height: 1.42;
+  }
+  table.measured td.s { font-family: var(--mono); color: var(--amber); white-space: nowrap; width: 1%; font-variant-numeric: tabular-nums; }
+  table.measured tr:last-child td { border-bottom: none; }
+  table.measured td strong { color: var(--paper); font-weight: 600; }
+
+  .flag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--amber);
+    background: var(--amber-15);
+    border: 1px solid var(--amber-30);
+    padding: 3px 9px;
+    margin: 0 4px 5px 0;
+  }
+  .flag.off { color: var(--faint); background: transparent; border-color: var(--rule); text-decoration: line-through; }
+
+  .caution {
+    border: 1px solid rgba(219,106,84,.4);
+    background: rgba(219,106,84,.09);
+    padding: 16px 20px;
+    font-size: 18.5px;
+    line-height: 1.5;
+    color: var(--dim);
+  }
+  .caution b { color: var(--bad); font-weight: 600; }
+
+  .note-good {
+    border: 1px solid rgba(99,190,147,.36);
+    background: rgba(99,190,147,.08);
+    padding: 16px 20px;
+    font-size: 18.5px;
+    line-height: 1.5;
+    color: var(--dim);
+  }
+  .note-good b { color: var(--good); font-weight: 600; }
+
+  /* ---------- architecture diagram ---------- */
+
+  #arch { width: 100%; height: 100%; display: block; }
+  #arch text { font-family: var(--mono); fill: var(--dim); }
+
+  .node rect {
+    fill: var(--ink2);
+    stroke: var(--rule);
+    stroke-width: 1.4;
+  }
+  .node .lbl { font-size: 15px; fill: var(--paper); letter-spacing: .04em; }
+  .node .sub { font-size: 12px; fill: var(--faint); }
+  .node, .edge, .chip { opacity: 0; transition: opacity .42s ease, transform .42s ease; }
+  .node.on, .edge.on, .chip.on { opacity: 1; }
+  .node.off, .edge.off, .chip.off { opacity: 0; }
+
+  .node.fresh rect { stroke: var(--amber); stroke-width: 2.2; fill: #1D2233; }
+  .node.fresh .lbl { fill: var(--amber); }
+  .node.graphy rect { stroke: rgba(127,176,238,.5); }
+  .node.graphy.fresh rect { stroke: var(--graph); }
+  .node.graphy.fresh .lbl { fill: var(--graph); }
+
+  .edge path, .edge line { stroke: var(--rule); stroke-width: 1.4; fill: none; }
+  .edge.fresh path, .edge.fresh line { stroke: var(--amber); stroke-width: 2; }
+  .edge.graphy path, .edge.graphy line { stroke: rgba(127,176,238,.45); }
+
+  .chip rect { fill: var(--ink3); stroke: var(--rule); stroke-width: 1.2; }
+  .chip text { font-size: 13.5px; fill: var(--dim); }
+  .chip.fresh rect { fill: rgba(237,169,63,.16); stroke: var(--amber); stroke-width: 1.8; }
+  .chip.fresh text { fill: var(--amber); }
+  .chip.graphy.fresh rect { fill: var(--graph-15); stroke: var(--graph); }
+  .chip.graphy.fresh text { fill: var(--graph); }
+
+  .lane-label { font-size: 11.5px; letter-spacing: .24em; fill: var(--faint); }
+  .container rect { fill: none; stroke: var(--rule-soft); stroke-width: 1.2; stroke-dasharray: 3 4; }
+  .container text { font-size: 11.5px; letter-spacing: .18em; fill: var(--faint); }
+
+  @keyframes pulseIn {
+    0%   { transform: scale(.96); opacity: 0; }
+    60%  { transform: scale(1.015); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .node.fresh, .chip.fresh { animation: pulseIn .5s ease both; transform-box: fill-box; transform-origin: center; }
+
+  /* ---------- big-number strip ---------- */
+
+  .figs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 30px; }
+  .fig { background: var(--ink2); border: 1px solid var(--rule); padding: 20px; }
+  .fig .n {
+    font-family: var(--display);
+    font-size: 52px;
+    line-height: 1;
+    color: var(--amber);
+    font-variant-numeric: tabular-nums;
+  }
+  .fig .n.blue { color: var(--graph); }
+  .fig .c { font-size: 16px; color: var(--dim); margin-top: 10px; line-height: 1.4; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; margin-top: 26px; flex: 1; min-height: 0; }
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 28px; }
+
+  pre {
+    font-family: var(--mono);
+    font-size: 15.5px;
+    line-height: 1.62;
+    color: var(--dim);
+    background: var(--ink2);
+    border: 1px solid var(--rule);
+    padding: 18px 20px;
+    margin: 0;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  pre .hl { color: var(--amber); }
+  pre .g { color: var(--good); }
+  pre .r { color: var(--bad); }
+  pre .b { color: var(--graph); }
+
+  .funnel { display: flex; flex-direction: column; gap: 9px; margin-top: 6px; }
+  .fstep { display: flex; align-items: center; gap: 14px; }
+  .fstep .bar { height: 34px; background: var(--amber-15); border: 1px solid var(--amber-30); }
+  .fstep .bar.cut { background: rgba(219,106,84,.12); border-color: rgba(219,106,84,.35); }
+  .fstep .t { font-family: var(--mono); font-size: 15px; color: var(--dim); white-space: nowrap; }
+  .fstep .t b { color: var(--paper); }
+
+  .kbd {
+    font-family: var(--mono);
+    font-size: 13px;
+    border: 1px solid var(--rule);
+    background: var(--ink2);
+    padding: 2px 7px;
+    color: var(--dim);
+  }
+
+  /* ---------- help overlay ---------- */
+
+  #help {
+    position: absolute;
+    inset: 0;
+    background: rgba(6,9,14,.93);
+    display: none;
+    place-items: center;
+    z-index: 40;
+  }
+  #help.show { display: grid; }
+  #help .card { border: 1px solid var(--rule); background: var(--ink2); padding: 36px 42px; max-width: 620px; }
+  #help h3 { margin-bottom: 18px; }
+  #help dl { display: grid; grid-template-columns: auto 1fr; gap: 12px 22px; margin: 0; font-size: 17px; color: var(--dim); }
+  #help dt { text-align: right; }
+
+  #hint {
+    position: absolute;
+    right: 22px;
+    bottom: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--faint);
+    letter-spacing: .1em;
+    z-index: 20;
+  }
+
+  .slide { display: none; }
+  .slide.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .node, .edge, .chip { transition: none; }
+    .node.fresh, .chip.fresh { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="slide">
+    <div id="deck"></div>
+    <div id="rail"></div>
+    <div id="footer">
+      <span id="fname">THE RAG LADDER</span>
+      <span id="fnum">1 / 1</span>
+    </div>
+  </div>
+</div>
+
+<div id="help">
+  <div class="card">
+    <h3>Getting around</h3>
+    <dl>
+      <dt><span class="kbd">&rarr;</span> <span class="kbd">space</span></dt><dd>next slide</dd>
+      <dt><span class="kbd">&larr;</span></dt><dd>previous slide</dd>
+      <dt><span class="kbd">n</span> <span class="kbd">p</span></dt><dd><b>next / previous rung</b>, skipping the detail slides &mdash; use this when you are behind time</dd>
+      <dt><span class="kbd">0</span>&ndash;<span class="kbd">9</span></dt><dd>jump to a rung &mdash; type <span class="kbd">1</span><span class="kbd">1</span> quickly for rung 11</dd>
+      <dt><span class="kbd">home</span> <span class="kbd">end</span></dt><dd>first / last slide</dd>
+      <dt><span class="kbd">f</span></dt><dd>fullscreen</dd>
+      <dt><span class="kbd">?</span></dt><dd>this panel</dd>
+    </dl>
+  </div>
+</div>
+
+<div id="hint">? FOR KEYS</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ==========================================================================
+  // The architecture diagram.
+  //
+  // One SVG, drawn once, shown on every rung slide. Each node, edge and chip
+  // declares the rung it arrives at, and optionally the rung it disappears
+  // after. Advancing a rung re-derives visibility rather than mutating the
+  // drawing, so jumping straight to rung 9 shows the same picture as walking
+  // there — the failure mode of hand-animating each step.
+  // ==========================================================================
+
+  var VB = { w: 1160, h: 560 };
+
+  var NODES = [
+    // index-time lane
+    { id: 'doc',     x: 46,  y: 62,  w: 116, h: 52, lbl: 'Document',  sub: 'PDF',            from: 1 },
+    { id: 'chunk',   x: 200, y: 62,  w: 148, h: 52, lbl: 'Chunker',   sub: 'fixed 400',      from: 1 },
+    { id: 'embed',   x: 386, y: 62,  w: 128, h: 52, lbl: 'Embedder',  sub: '384 dims',       from: 1 },
+    { id: 'vstore',  x: 552, y: 62,  w: 152, h: 52, lbl: 'Vector store', sub: '3 collections', from: 1 },
+    { id: 'extract', x: 200, y: 150, w: 148, h: 52, lbl: 'Extraction', sub: 'LLM proposes',  from: 10, graphy: true },
+    { id: 'filters', x: 386, y: 150, w: 128, h: 52, lbl: '7 filters',  sub: 'code disposes', from: 10, graphy: true },
+    { id: 'gstore',  x: 552, y: 150, w: 152, h: 52, lbl: 'Graph store', sub: 'Neo4j',        from: 10, graphy: true },
+
+    // query-time lane
+    { id: 'q',       x: 46,  y: 316, w: 116, h: 52, lbl: 'Question',  sub: '',               from: 0 },
+    { id: 'router',  x: 46,  y: 404, w: 116, h: 46, lbl: 'Router',    sub: 'classify',       from: 11 },
+    { id: 'rewrite', x: 200, y: 316, w: 116, h: 52, lbl: 'Rewrite',   sub: 'expand',         from: 6 },
+    { id: 'prompt',  x: 742, y: 316, w: 116, h: 52, lbl: 'Prompt',    sub: 'context',        from: 1 },
+    { id: 'llm',     x: 892, y: 316, w: 108, h: 52, lbl: 'LLM',       sub: '',               from: 0 },
+    { id: 'answer',  x: 1030,y: 316, w: 108, h: 52, lbl: 'Answer',    sub: '',               from: 0 },
+    { id: 'cite',    x: 1030,y: 404, w: 108, h: 46, lbl: 'Cite check',sub: 'verify',         from: 8 }
+  ];
+
+  // The retrieve block: a dashed container that gains one chip per rung.
+  var RETRIEVE = { x: 352, y: 252, w: 358, h: 246 };
+  var CHIPS = [
+    { id: 'c-vec',   lbl: 'vector search  ·  top k',        from: 1 },
+    { id: 'c-filt',  lbl: 'metadata filter',                from: 3 },
+    { id: 'c-hyb',   lbl: 'keyword BM25  +  RRF fusion',    from: 4 },
+    { id: 'c-rank',  lbl: 'rerank  50 → 5',                 from: 5 },
+    { id: 'c-agent', lbl: 'agentic loop',                   from: 9 },
+    { id: 'c-graph', lbl: 'graph hop',                      from: 10, graphy: true }
+  ];
+
+  var EDGES = [
+    { id: 'e1', from: 1, path: 'M162,88 H200' },
+    { id: 'e2', from: 1, path: 'M348,88 H386' },
+    { id: 'e3', from: 1, path: 'M514,88 H552' },
+    { id: 'e4', from: 10, graphy: true, path: 'M274,114 V150' },
+    { id: 'e5', from: 10, graphy: true, path: 'M348,176 H386' },
+    { id: 'e6', from: 10, graphy: true, path: 'M514,176 H552' },
+    { id: 'e7', from: 1, path: 'M628,114 V252' },                      // vector store into retrieve
+    { id: 'e8', from: 10, graphy: true, path: 'M628,202 V252' },        // graph store into retrieve
+    { id: 'e9', from: 1, to: 5, path: 'M162,342 H352' },               // question straight to retrieve
+    { id: 'e10', from: 6, path: 'M162,342 H200' },
+    { id: 'e11', from: 6, path: 'M316,342 H352' },
+    { id: 'e12', from: 1, path: 'M710,342 H742' },
+    { id: 'e13', from: 1, path: 'M858,342 H892' },
+    { id: 'e14', from: 0, path: 'M1000,342 H1030' },
+    { id: 'e15', from: 0, to: 0, path: 'M162,342 H892' },              // rung 0 only: straight to the model
+    { id: 'e16', from: 8, path: 'M1084,368 V404' },
+    { id: 'e17', from: 11, path: 'M104,404 V368' }
+  ];
+
+  var CHUNKER_SUB = { 1: 'fixed 400 · no overlap', 2: 'recursive 400/80', 7: 'contextual + prefix' };
+
+  function svgEl(name, attrs) {
+    var n = document.createElementNS('http://www.w3.org/2000/svg', name);
+    for (var k in attrs) { if (attrs[k] !== undefined && attrs[k] !== null) n.setAttribute(k, attrs[k]); }
+    return n;
+  }
+
+  function buildArch() {
+    var svg = svgEl('svg', { id: 'arch', viewBox: '0 0 ' + VB.w + ' ' + VB.h, preserveAspectRatio: 'xMidYMid meet' });
+
+    var l1 = svgEl('text', { x: 46, y: 36, class: 'lane-label' });
+    l1.textContent = 'INDEX TIME — ONCE PER DOCUMENT';
+    svg.appendChild(l1);
+
+    var l2 = svgEl('text', { x: 46, y: 290, class: 'lane-label' });
+    l2.textContent = 'QUERY TIME — ONCE PER QUESTION';
+    svg.appendChild(l2);
+
+    EDGES.forEach(function (e) {
+      var g = svgEl('g', { class: 'edge' + (e.graphy ? ' graphy' : ''), 'data-id': e.id });
+      g.appendChild(svgEl('path', { d: e.path }));
+      svg.appendChild(g);
+    });
+
+    // The dashed retrieve container is structural, not a rung of its own.
+    var cont = svgEl('g', { class: 'container', 'data-id': 'retrieve-box' });
+    cont.appendChild(svgEl('rect', { x: RETRIEVE.x, y: RETRIEVE.y, width: RETRIEVE.w, height: RETRIEVE.h }));
+    var ct = svgEl('text', { x: RETRIEVE.x + 14, y: RETRIEVE.y + 24 });
+    ct.textContent = 'RETRIEVE';
+    cont.appendChild(ct);
+    svg.appendChild(cont);
+
+    CHIPS.forEach(function (c, i) {
+      var g = svgEl('g', { class: 'chip' + (c.graphy ? ' graphy' : ''), 'data-id': c.id, 'data-from': c.from });
+      var y = RETRIEVE.y + 44 + i * 32;
+      g.appendChild(svgEl('rect', { x: RETRIEVE.x + 14, y: y, width: RETRIEVE.w - 28, height: 26 }));
+      var t = svgEl('text', { x: RETRIEVE.x + 26, y: y + 18 });
+      t.textContent = c.lbl;
+      g.appendChild(t);
+      svg.appendChild(g);
+    });
+
+    NODES.forEach(function (n) {
+      var g = svgEl('g', { class: 'node' + (n.graphy ? ' graphy' : ''), 'data-id': n.id });
+      g.appendChild(svgEl('rect', { x: n.x, y: n.y, width: n.w, height: n.h }));
+      var lbl = svgEl('text', { x: n.x + n.w / 2, y: n.y + (n.sub ? 24 : 31), 'text-anchor': 'middle', class: 'lbl' });
+      lbl.textContent = n.lbl;
+      g.appendChild(lbl);
+      if (n.sub) {
+        var sub = svgEl('text', { x: n.x + n.w / 2, y: n.y + 41, 'text-anchor': 'middle', class: 'sub' });
+        sub.textContent = n.sub;
+        g.appendChild(sub);
+      }
+      svg.appendChild(g);
+    });
+
+    return svg;
+  }
+
+  function paintArch(svg, rung) {
+    function apply(sel, items) {
+      items.forEach(function (item) {
+        var g = svg.querySelector(sel + '[data-id="' + item.id + '"]');
+        if (!g) { return; }
+        var visible = rung >= item.from && (item.to === undefined || rung <= item.to);
+        g.classList.toggle('on', visible);
+        g.classList.toggle('off', !visible);
+        g.classList.toggle('fresh', visible && rung === item.from && item.from > 0);
+      });
+    }
+    apply('.node', NODES);
+    apply('.edge', EDGES);
+    apply('.chip', CHIPS);
+
+    var box = svg.querySelector('.container[data-id="retrieve-box"]');
+    box.style.opacity = rung >= 1 ? '1' : '0';
+
+    // The chunker is the one box whose contents change rather than appearing.
+    var chunk = svg.querySelector('.node[data-id="chunk"] .sub');
+    if (chunk) {
+      var sub = CHUNKER_SUB[1];
+      if (rung >= 7) { sub = CHUNKER_SUB[7]; } else if (rung >= 2) { sub = CHUNKER_SUB[2]; }
+      chunk.textContent = sub;
+    }
+    var chunkNode = svg.querySelector('.node[data-id="chunk"]');
+    if (chunkNode) { chunkNode.classList.toggle('fresh', rung === 1 || rung === 2 || rung === 7); }
+  }
+
+  // ==========================================================================
+  // The twelve rungs. Every "measured" figure here came off a real run on a
+  // four-core CPU box with qwen2.5:3b, all-minilm embeddings, Qdrant and Neo4j
+  // in Docker — including the two results that undercut the tidy story.
+  // ==========================================================================
+
+  var RUNGS = [
+    {
+      n: 0, name: 'No RAG', teaches: 'The hallucination baseline',
+      adds: 'Nothing. The question goes straight to the model.',
+      mech: [
+        'No document is loaded, no retrieval runs, and the prompt carries <strong>no context at all</strong>.',
+        'This is the only rung allowed to answer unconstrained. Every other rung is bound to retrieved text and must otherwise say <code>Not found in the provided documents.</code>',
+        'The response is flagged <code>unconstrained</code> in the API and in the UI, because an answer with no provenance should never be mistaken for one that has it.'
+      ],
+      evLabel: 'Measured output — asked "Who plays Peter Parker?"',
+      ev: '<div class="quote">In the Marvel Cinematic Universe, Peter Parker is played by <span class="wrong">Tom Holland</span>&hellip; Prior to this, <span class="wrong">Andrew Garfield</span> portrayed Peter Parker before being replaced by <span class="wrong">Tobey Maguire</span>.</div>',
+      note: { kind: 'caution', html: '<b>Two failures, not one.</b> None of those names appear in our document &mdash; and the sentence is also wrong about the real world, since Maguire came <em>before</em> Garfield. Fluent, confident, and unfalsifiable unless you already knew the answer. That is the baseline every rung above is measured against.' }
+    },
+    {
+      n: 1, name: 'Naive RAG', teaches: 'The core loop',
+      adds: 'Chunk &rarr; embed &rarr; store &rarr; retrieve &rarr; ground the prompt.',
+      mech: [
+        '<strong>Chunker.</strong> The document is split into fixed 400-token windows with <strong>zero overlap</strong>, page by page, ignoring structure entirely.',
+        '<strong>Embedder.</strong> Each chunk becomes a 384-dimension vector via <code>all-MiniLM-L6-v2</code>. The question is embedded with the same model &mdash; that shared space is the whole trick.',
+        '<strong>Retrieve.</strong> Cosine similarity, top 5 chunks.',
+        '<strong>Ground.</strong> Those five chunks go into the prompt with an instruction to answer only from them, or refuse.'
+      ],
+      evLabel: 'Measured output — same question',
+      ev: '<div class="quote"><span class="right">Niraj Ranasinghe</span> as Peter Parker in Spider-Man: No Way Home (2021).</div>',
+      note: { kind: 'good', html: '<b>This is the largest single jump in the whole deck.</b> Tom Holland is gone. Every name now comes from the document. Everything in the next ten rungs is refinement on top of this &mdash; worth saying plainly, because it is tempting to imply each rung is equally transformative.' }
+    },
+    {
+      n: 2, name: 'Chunking', teaches: 'Overlap and boundaries',
+      adds: 'A structure-aware splitter with overlap, replacing the blind one.',
+      mech: [
+        'Split on <strong>section</strong>, then paragraph, then sentence &mdash; never mid-fact if it can be helped.',
+        '400 tokens with <strong>80 tokens of overlap</strong> carried between consecutive chunks, so a fact spanning a boundary survives in at least one of them.',
+        'The old fixed strategy is kept, not deleted. All three chunkings live side by side in separate collections, so any rung can be compared against any other on identical text.',
+        'Chunk ids stay stable: <code>{docId}#{seq}</code>, one global sequence across all three strategies. That id later becomes the only join between the vector store and the graph.'
+      ],
+      evLabel: 'Trap 1 — a filmography split across a page break',
+      ev: '<table class="measured"><thead><tr><th>Rung</th><th>Answer to "how many features?"</th></tr></thead><tbody>' +
+          '<tr><td class="s">1</td><td><strong>3</strong> &mdash; Homecoming, Infinity War, No Way Home</td></tr>' +
+          '<tr><td class="s">2</td><td><strong>5</strong> &mdash; sees the whole list</td></tr></tbody></table>',
+      note: { kind: 'caution', html: '<b>The corpus says six.</b> Retrieval at rung 2 is correct &mdash; the section comes back whole, all six credits present &mdash; and the 3B model then miscounts them. That is a generation limit, not a retrieval failure. The rung transition is real; the arithmetic is not. Say so before someone in the third row does.' }
+    },
+    {
+      n: 3, name: 'Metadata filter', teaches: 'Right title, right year',
+      adds: 'Structured filters applied before the vector search runs.',
+      mech: [
+        'Every section carries front matter: <code>docType</code>, <code>subject</code>, <code>year</code>, <code>studio</code>, <code>market</code>. It is parsed at index time and stored on the chunk payload.',
+        'Those fields get real payload indexes in the vector store &mdash; keyword indexes for the strings, integer for the year.',
+        'The filter is <strong>inferred from the question</strong> when the caller does not supply one, and the inference is reported back so you can see what was applied.',
+        'Crucially this is a <strong>pre-filter</strong>, not a post-filter: it shrinks the candidate set before similarity is computed, so a 2002 record cannot crowd out a 2021 one on style alone.'
+      ],
+      evLabel: 'Trap 2 — superseded casting',
+      ev: '<table class="measured"><thead><tr><th>Rung</th><th>Answer</th></tr></thead><tbody>' +
+          '<tr><td class="s">2</td><td>Both current and historical performers, plus the full recast history</td></tr>' +
+          '<tr><td class="s">3</td><td>The current performer. <strong>History dropped.</strong></td></tr></tbody></table>',
+      note: { kind: 'good', html: '<b>Same facts, better prioritised.</b> Nothing was retrieved that rung 2 could not reach; the difference is that <code>year</code> is now a filter rather than a word in a sentence. Most real-world RAG wins look like this &mdash; unglamorous plumbing beating cleverness.' }
+    },
+    {
+      n: 4, name: 'Hybrid search', teaches: "Embeddings can't do exact figures",
+      adds: 'A lexical BM25 arm, fused with the vector arm.',
+      mech: [
+        'Embeddings are terrible at exact strings. <code>3,571,150,070</code> is not a concept &mdash; it is a token, and a normalising encoder throws away precisely what makes it useful.',
+        'The keyword arm retrieves through a full-text index and is then <strong>BM25-scored locally</strong>.',
+        'Results merge by <strong>Reciprocal Rank Fusion</strong>, k=60. Fusion is computed in the application rather than in the vector store, so every hit keeps a label: <code>vector</code>, <code>keyword</code>, or <code>both</code>.',
+        'Those labels are the teaching payload. "Found by keyword only" is the most persuasive line in the demo, and native fusion discards it.'
+      ],
+      evLabel: 'Why the arm labels matter',
+      ev: '<pre>question   what was the domestic opening weekend?\n\n<span class="hl">vector  </span>  production notes, extended shoot in Kandy\n<span class="hl">keyword </span>  <span class="g">Domestic opening weekend 3,571,150,070</span>\n<span class="hl">both    </span>  box office record, No Way Home\n\nRRF k=60  →  the keyword-only hit ranks first</pre>',
+      note: { kind: 'good', html: '<b>Retrieval is not one thing.</b> Two arms with different failure modes, combined by rank rather than by score &mdash; RRF needs no score normalisation between arms, which is exactly why it survives contact with production.' }
+    },
+    {
+      n: 5, name: 'Reranking', teaches: 'Retrieve wide, rank precise',
+      adds: 'A second, more expensive scoring pass over a wider candidate set.',
+      mech: [
+        'Retrieve <strong>50 candidates</strong> instead of 5, then rescore all of them and keep the best 5.',
+        'The reranker judges query and passage <strong>together</strong>, which a bi-encoder cannot: the embedding of a chunk is computed before anyone asks a question, so it must be a compromise across all possible questions.',
+        'The UI shows rank-before and rank-after with the delta, so you can watch a chunk climb from position 34 into the answer.',
+        'This is the demo\'s honest cost slide: one model call per candidate.'
+      ],
+      evLabel: 'Cost, measured cold on a 4-core CPU',
+      ev: '<div class="figs" style="grid-template-columns:repeat(2,1fr);margin-top:0"><div class="fig"><div class="n">50&rarr;5</div><div class="c">candidates rescored per question</div></div><div class="fig"><div class="n">219<span style="font-size:26px">s</span></div><div class="c">slowest rung in the deck, cold</div></div></div>',
+      note: { kind: 'caution', html: '<b>Accuracy you buy with latency.</b> On a GPU this is milliseconds; on a CPU it dominates. Worth naming, because "add a reranker" is advice given far more often than the bill for it is mentioned.' }
+    },
+    {
+      n: 6, name: 'Query rewrite', teaches: "Users don't write like press kits",
+      adds: 'An LLM pass that rewrites the question before searching.',
+      mech: [
+        'The question is expanded into the vocabulary the corpus actually uses, plus an explicit keyword list for the lexical arm.',
+        'The original and the rewrite are both shown &mdash; a rewrite that drifts is a failure you need to be able to see.',
+        'It costs one extra model call per question, before retrieval even starts.'
+      ],
+      evLabel: 'The trap this was built for — and what happened',
+      ev: '<table class="measured"><thead><tr><th>Rung</th><th>"Who did the <em>music</em> for Homecoming?" — corpus says "original score composed by"</th></tr></thead><tbody>' +
+          '<tr><td class="s">5</td><td><span style="color:var(--good)">Correct.</span> Piyal Devendra composed the original score.</td></tr>' +
+          '<tr><td class="s">6</td><td><span style="color:var(--good)">Correct.</span> Identical answer.</td></tr></tbody></table>',
+      note: { kind: 'caution', html: '<b>The trap did not fire.</b> This rung was supposed to be the one that fixed the colloquial-query problem, and the embedder already placed "music" near "score" without help. I am leaving it in the deck rather than quietly swapping the example: a trap designed on paper may not survive a competent encoder, and knowing <em>which</em> of your layers is not earning its keep is the entire point of building a ladder.' }
+    },
+    {
+      n: 7, name: 'Contextual chunks', teaches: 'Orphan chunks lack referents',
+      adds: 'A generated context prefix on every chunk before embedding.',
+      mech: [
+        'A chunk reading "He wore the suit for the closing act" is unretrievable and unusable &mdash; no name, no title, no year.',
+        'Each chunk is prefixed with what work it belongs to, its year and its document type, and <strong>then</strong> embedded. The prefix is part of the indexed text, not decoration.',
+        'This is a third full collection, so it can be compared against the other two on identical source text.'
+      ],
+      evLabel: 'Measured — and an effect worth flagging',
+      ev: '<div class="quote">From this rung on, the main demo question tilts toward a different continuity: the prefixes make the earliest films\' chunks read as more strongly on-topic, and the answer changes <em>emphasis</em> rather than correctness.</div>',
+      note: { kind: 'caution', html: '<b>The ladder stops being monotonic here.</b> Rungs 7 to 11 change which true answer surfaces first, not whether the answer is true. Three different performers really did hold the role. Presenting rung 11 as "the best" would be a story the data does not support.' }
+    },
+    {
+      n: 8, name: 'Citations', teaches: 'Trust and verification',
+      adds: 'Sentence-level attribution, checked rather than claimed.',
+      mech: [
+        'Each factual sentence in the answer is attributed to a chunk, and then <strong>verified</strong> against that chunk &mdash; a citation that does not support its sentence is marked unverified.',
+        'A <strong>groundedness</strong> score reports the share of factual sentences carrying a citation the cited chunk visibly supports.',
+        'Note what this rung is not: it adds <em>no</em> retrieval power. The answer does not get better. It gets <strong>auditable</strong>.'
+      ],
+      evLabel: 'What the panel shows per citation',
+      ev: '<pre>#  chunk              page  verified  supporting span\n1  <span class="hl">doc_de5a#35</span>          6   <span class="g">yes</span>       "…Niraj Ranasinghe assuming\n                                     the part."\n2  <span class="hl">doc_de5a#19</span>          2   <span class="r">no</span>        —\n\ngroundedness  <span class="hl">50%</span></pre>',
+      note: { kind: 'good', html: '<b>The only rung that improves the reader rather than the retrieval.</b> In most production systems this is the layer that decides whether anyone is allowed to use the thing.' }
+    },
+    {
+      n: 9, name: 'Agentic', teaches: 'Multi-part needs multi-search',
+      adds: 'An iterative retrieve → assess → re-query loop.',
+      mech: [
+        '"Which of these two opened bigger, and by how much?" is two lookups and an arithmetic step. One similarity search cannot express it.',
+        'The model decides what to search for next based on what came back, and the full <strong>trace</strong> is recorded: iteration, action, query, hits, and the stated reason.',
+        'The trace is the honest part. An agent whose reasoning you cannot inspect is an agent you cannot debug.'
+      ],
+      evLabel: 'Cost, measured cold',
+      ev: '<div class="figs" style="grid-template-columns:repeat(2,1fr);margin-top:0"><div class="fig"><div class="n">401<span style="font-size:26px">s</span></div><div class="c">cold, several model calls per question</div></div><div class="fig"><div class="n">16<span style="font-size:26px">ms</span></div><div class="c">the same question, cached</div></div></div>',
+      note: { kind: 'caution', html: '<b>Unbounded loops are unbounded bills.</b> Iterations are capped and every one is visible. This rung buys real capability on compound questions and is straightforwardly wasteful on simple ones &mdash; which is what rung 11 exists to notice.' }
+    },
+    {
+      n: 10, name: 'Graph', teaches: 'Relations, paths, counts', graphy: true,
+      adds: 'An entire second index: an LLM-extracted knowledge graph.',
+      mech: [
+        '<strong>Extraction.</strong> The model proposes triples per chunk against a closed ontology &mdash; 14 node types, 26 relation types.',
+        '<strong>Then code disposes.</strong> Seven deterministic filters, of which evidence grounding is the hard one: the quoted span must be a literal substring of its chunk after whitespace and typographic normalisation.',
+        '<strong>Entity resolution.</strong> Type barriers are absolute and enforced by key construction, not a similarity threshold. Person, Character, Film and Studio can never merge.',
+        '<strong>Three query modes.</strong> <code>expand</code> seeds from vector search and walks outward; <code>path</code> runs shortestPath and builds the answer from the traversal; <code>aggregate</code> skips vectors entirely and counts in Cypher.',
+        '<strong>The join is one field.</strong> Graph chunk nodes carry no embedding &mdash; their id matches the vector payload\'s <code>chunkId</code>. That string is the entire vector-to-graph integration.'
+      ],
+      evLabel: 'The funnel, measured on 26 chunks',
+      ev: '<div class="funnel">' +
+          '<div class="fstep"><div class="bar" style="width:70%"></div><div class="t">extracted <b>267</b></div></div>' +
+          '<div class="fstep"><div class="bar" style="width:70%"></div><div class="t">grounded <b>267</b></div></div>' +
+          '<div class="fstep"><div class="bar" style="width:70%"></div><div class="t">conformant <b>267</b></div></div>' +
+          '<div class="fstep"><div class="bar cut" style="width:61.6%"></div><div class="t">committed <b>235</b> &nbsp;<span style="color:var(--faint)">32 dropped by resolution and dedup</span></div></div>' +
+          '</div><div style="margin-top:16px;font-size:17px;color:var(--dim);line-height:1.5">126 entities &mdash; 56 Person, 45 Character, 13 Film, 7 Location, 3 Studio, 2 Franchise. Plus 292 <code>COLLABORATED_WITH</code> edges derived after commit and marked <code>derived: true</code>.</div>',
+      note: { kind: 'good', html: '<b>An LLM proposes, deterministic code disposes.</b> Structural edges are written by code; only semantic edges come from the model, and none of them reach the graph without surviving all seven filters. Reverse that relationship and the graph becomes a confident fiction.' }
+    },
+    {
+      n: 11, name: 'Router', teaches: 'Not every query needs every layer',
+      adds: 'A classifier that chooses which layers to run — and which to skip.',
+      mech: [
+        'The question is classified, and the classification selects a route: lookup, relational, path, aggregation, or multi-part.',
+        'It turns things <strong>off</strong> as readily as on. A path question does not need reranking, hybrid retrieval or an agentic loop, and running them costs latency for nothing.',
+        'The classification, the chosen route and every applied flag are reported, so a bad routing decision is visible rather than mysterious.',
+        'This is the rung that makes the previous ten affordable.'
+      ],
+      evLabel: 'The finale — "How is Isuru Obeysekera connected to Nethmi Tomei?"',
+      ev: '<table class="measured"><thead><tr><th>Rung</th><th>Answer</th></tr></thead><tbody>' +
+          '<tr><td class="s">9</td><td><span style="color:var(--faint)">Not found in the provided documents.</span></td></tr>' +
+          '<tr><td class="s">10</td><td><span style="color:var(--faint)">Not found in the provided documents.</span></td></tr>' +
+          '<tr><td class="s">11</td><td><strong>Isuru Obeysekera composed for Spider-Man (2002), which starred Rashmi Samaraweera, who acted in Spider-Man: Far From Home (2019), which starred Nethmi Tomei.</strong></td></tr></tbody></table>' +
+          '<div style="margin-top:14px"><span class="flag">classified: path</span><span class="flag">graphMode=path</span><span class="flag off">agentic</span><span class="flag off">rerank</span><span class="flag off">hybrid</span></div>',
+      note: { kind: 'good', html: '<b>The two names never appear in the same chunk.</b> No amount of retrieval finds that link, and rungs 9 and 10 correctly <em>refuse</em> rather than inventing something. Rung 10\'s graph mode is always <code>expand</code>; only the router selects <code>path</code>. Four hops, and the answer is constructed from the traversal rather than generated from retrieved text.' }
+    }
+  ];
+
+  // ==========================================================================
+  // Slides
+  // ==========================================================================
+
+  var slides = [];
+
+  function slide(html, opts) {
+    opts = opts || {};
+    slides.push({ html: html, rung: opts.rung, name: opts.name || 'THE RAG LADDER' });
+  }
+
+  // --- opening ---------------------------------------------------------------
+
+  slide(
+    '<div class="eyebrow"><span>A working demo, not a diagram</span></div>' +
+    '<h1>The RAG ladder</h1>' +
+    '<div class="deck-sub">One document. One question. Twelve pipeline stages, each adding exactly one thing &mdash; and every answer changing in front of you.</div>' +
+    '<div class="figs">' +
+      '<div class="fig"><div class="n">12</div><div class="c">cumulative rungs, 0 to 11</div></div>' +
+      '<div class="fig"><div class="n">3</div><div class="c">chunking strategies, indexed side by side</div></div>' +
+      '<div class="fig"><div class="n blue">235</div><div class="c">graph edges that survived seven filters</div></div>' +
+      '<div class="fig"><div class="n">86</div><div class="c">tests pinning the behaviour</div></div>' +
+    '</div>', { name: 'TITLE' });
+
+  slide(
+    '<div class="eyebrow"><span>The problem with RAG talks</span></div>' +
+    '<h2>Everyone can draw the diagram.<br>Almost nobody can show you where it breaks.</h2>' +
+    '<div class="two">' +
+      '<div>' +
+        '<div class="panel"><div class="plabel">The usual talk</div><ul class="mech">' +
+          '<li>A box diagram: chunk, embed, retrieve, generate.</li>' +
+          '<li>A demo where the answer is right.</li>' +
+          '<li>A list of techniques, all presented as improvements.</li>' +
+          '<li>No indication which ones actually earned their place.</li>' +
+        '</ul></div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="panel"><div class="plabel">This talk</div><ul class="mech">' +
+          '<li>The same question at every rung, so you see the delta rather than the destination.</li>' +
+          '<li>A corpus engineered so specific rungs <strong>must</strong> fail.</li>' +
+          '<li>Real measurements, including <strong>two rungs that did not help</strong>.</li>' +
+          '<li>Everything on screen is clickable down to the evidence span.</li>' +
+        '</ul></div>' +
+      '</div>' +
+    '</div>', { name: 'WHY' });
+
+  slide(
+    '<div class="eyebrow"><span>Ground floor</span></div>' +
+    '<h2>What RAG actually is</h2>' +
+    '<div class="lede">A language model knows what was in its training data. It does not know your document. <strong>Retrieval-Augmented Generation</strong> is the unglamorous fix: find the relevant text first, put it in the prompt, and instruct the model to answer only from it.</div>' +
+    '<div class="three">' +
+      '<div class="panel"><div class="plabel">1 — Index, once</div><div style="font-size:19px;color:var(--dim);line-height:1.5">Split the document into pieces small enough to be specific and large enough to be meaningful. Turn each into a vector. Store it.</div></div>' +
+      '<div class="panel"><div class="plabel">2 — Retrieve, per question</div><div style="font-size:19px;color:var(--dim);line-height:1.5">Turn the question into a vector in the same space. Find the nearest chunks. This is a similarity search, not an understanding step.</div></div>' +
+      '<div class="panel"><div class="plabel">3 — Generate, grounded</div><div style="font-size:19px;color:var(--dim);line-height:1.5">Put those chunks in the prompt. Constrain the model to them. Make it refuse when they are insufficient.</div></div>' +
+    '</div>' +
+    '<div class="note-good" style="margin-top:26px"><b>Every one of the twelve rungs is a modification to one of those three steps.</b> That is the whole map. Nothing that follows is a different architecture &mdash; only a better-instrumented version of this one.</div>', { name: 'WHAT IS RAG' });
+
+  slide(
+    '<div class="eyebrow"><span>The corpus</span></div>' +
+    '<h2>A document engineered to be hostile</h2>' +
+    '<div class="two">' +
+      '<div>' +
+        '<div class="lede" style="margin-top:0">Real film titles as familiar labels. <strong>Every person, studio, location and figure invented.</strong></div>' +
+        '<div class="note-good" style="margin-top:22px"><b>Why counterfactual, and why it must stay that way.</b> The model already knows the real credits. If the corpus matched reality, a correct answer would prove nothing &mdash; the model could bypass retrieval entirely and every rung would look equally good. Because every credit is invented, a right answer is <em>only</em> possible by reading the document.</div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="panel"><div class="plabel">Twelve traps, each disarmed at a known rung</div>' +
+        '<table class="measured"><tbody>' +
+          '<tr><td class="s">1</td><td>Filmography split across a page break</td></tr>' +
+          '<tr><td class="s">2</td><td>Superseded casting &mdash; three performers, one role</td></tr>' +
+          '<tr><td class="s">3</td><td>A ten-digit figure embeddings will blur</td></tr>' +
+          '<tr><td class="s">4</td><td>The credit that matters, buried last in a crew block</td></tr>' +
+          '<tr><td class="s">6</td><td>An orphan pronoun: no name, no title</td></tr>' +
+          '<tr><td class="s">10</td><td>A connection no single chunk contains</td></tr>' +
+        '</tbody></table></div>' +
+      '</div>' +
+    '</div>', { name: 'CORPUS' });
+
+  slide(
+    '<div class="eyebrow"><span>The shape of it</span></div>' +
+    '<h2>Twelve rungs, cumulative</h2>' +
+    '<div class="lede">Rung <em class="mono" style="color:var(--amber);font-style:normal">n</em> keeps everything rung <em class="mono" style="color:var(--amber);font-style:normal">n&minus;1</em> turned on. The answer cache key covers the document, the question and <strong>every resolved flag</strong>, so no two rungs can ever share a completion.</div>' +
+    '<div style="margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:10px 34px">' +
+      RUNGS.map(function (r) {
+        return '<div style="display:flex;gap:14px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--rule-soft)">' +
+          '<span class="mono" style="color:' + (r.graphy ? 'var(--graph)' : 'var(--amber)') + ';width:2ch;text-align:right">' + r.n + '</span>' +
+          '<span style="font-size:19px;color:var(--paper);width:15ch;font-weight:600">' + r.name + '</span>' +
+          '<span style="font-size:17px;color:var(--faint)">' + r.teaches + '</span></div>';
+      }).join('') +
+    '</div>', { name: 'THE LADDER' });
+
+  // --- the twelve rungs ------------------------------------------------------
+
+  // Each rung becomes several light slides rather than one dense one:
+  //
+  //   1. the architecture slide  — what it adds, plus the diagram gaining its component
+  //   2. how it works            — at most two mechanism points per screen
+  //   3. what changed            — the measured evidence and the caveat
+  //
+  // The diagram appears only on the first slide of each rung, where the new box actually
+  // arrives. Repeating it behind the detail slides made both compete and neither land.
+
+  function eyebrow(r, tail) {
+    return '<div class="eyebrow"><span class="rung' + (r.graphy ? ' graphy' : '') + '">RUNG ' + r.n + '</span>' +
+      '<span>' + (tail || r.teaches) + '</span></div>';
+  }
+
+  RUNGS.forEach(function (r) {
+    var tag = 'RUNG ' + r.n + ' — ' + r.name.toUpperCase();
+
+    // --- 1. the architecture moment ---
+    slide(
+      eyebrow(r) +
+      '<h2>' + r.name + '</h2>' +
+      '<div class="cols arch-cols">' +
+        '<div style="display:flex;flex-direction:column;justify-content:center">' +
+          '<div class="adds big"><span class="k">What this rung adds</span><span class="v">' + r.adds + '</span></div>' +
+        '</div>' +
+        '<div class="right-col" style="display:flex;flex-direction:column;min-height:0"></div>' +
+      '</div>', { rung: r.n, name: tag });
+
+    // --- 2. how it works, three points at a time ---
+    // Three is the ceiling that still lets the type stay large enough to read from the back.
+    var groups = [];
+    for (var i = 0; i < r.mech.length; i += 3) { groups.push(r.mech.slice(i, i + 3)); }
+
+    groups.forEach(function (g, gi) {
+      var of = groups.length > 1 ? ' — ' + (gi + 1) + ' of ' + groups.length : '';
+      slide(
+        eyebrow(r, 'How it works' + of) +
+        '<h2>' + r.name + '</h2>' +
+        '<ul class="mech roomy">' + g.map(function (m) { return '<li>' + m + '</li>'; }).join('') + '</ul>',
+        { rung: r.n, name: tag });
+    });
+
+    // --- 3. what changed ---
+    var noteCls = r.note.kind === 'caution' ? 'caution' : 'note-good';
+    slide(
+      eyebrow(r, 'What changed') +
+      '<h2>' + r.name + '</h2>' +
+      '<div class="two" style="margin-top:22px">' +
+        '<div class="panel" style="align-self:start"><div class="plabel">' + r.evLabel + '</div>' + r.ev + '</div>' +
+        '<div class="' + noteCls + '" style="align-self:start;font-size:20px">' + r.note.html + '</div>' +
+      '</div>', { rung: r.n, name: tag });
+  });
+
+  // --- after the ladder ------------------------------------------------------
+
+  slide(
+    '<div class="eyebrow"><span>The architecture, whole</span></div>' +
+    '<h2>Everything, at rung 11</h2>' +
+    '<div style="flex:1;min-height:0;margin-top:14px" id="archFullHost"></div>', { rung: 11, name: 'FULL ARCHITECTURE', full: true });
+
+  slide(
+    '<div class="eyebrow"><span>The invariant that holds it up</span></div>' +
+    '<h2>An LLM proposes.<br>Deterministic code disposes.</h2>' +
+    '<div class="two">' +
+      '<div>' +
+        '<div class="panel"><div class="plabel">The seven filters, in order</div><ul class="mech">' +
+          '<li><strong>Evidence grounding.</strong> The quoted span must be a literal substring of its chunk. Highest-leverage check in the system.</li>' +
+          '<li><strong>Ontology conformance.</strong> Outside the closed vocabulary, dropped &mdash; never coerced into the nearest legal predicate.</li>' +
+          '<li><strong>Direction and type.</strong> An inverted edge is a correctable mistake: flip it and count the correction.</li>' +
+          '<li><strong>Dangling endpoints.</strong> A relation whose subject or object was never declared as an entity is discarded.</li>' +
+          '<li><strong>Confidence floor.</strong></li>' +
+          '<li><strong>Entity resolution.</strong> Seven rules, type barriers first.</li>' +
+          '<li><strong>Deduplication.</strong> Repeats become one edge carrying a mention count &mdash; repeated assertion is a real reliability signal.</li>' +
+        '</ul></div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="note-good"><b>Why grounding is the load-bearing one.</b> A fabricated relation rarely arrives with a real supporting span. Requiring the evidence to be quotable from the source text removes most hallucinated triples without any model in the loop.</div>' +
+        '<div class="panel" style="margin-top:16px"><div class="plabel">And a measured argument for the whole design</div>' +
+        '<table class="measured"><thead><tr><th>Extraction model</th><th>Edges committed</th></tr></thead><tbody>' +
+          '<tr><td>Local 3B, about an hour</td><td><strong style="color:var(--bad)">8</strong></td></tr>' +
+          '<tr><td>A capable model, about a minute</td><td><strong style="color:var(--good)">235</strong></td></tr>' +
+        '</tbody></table>' +
+        '<div style="margin-top:14px;font-size:17px;color:var(--dim);line-height:1.5">Identical filters both times. The filters did not get weaker &mdash; the input got better. A capable model quotes evidence verbatim, so <strong>267 of 267</strong> triples cleared the grounding check.</div></div>' +
+      '</div>' +
+    '</div>', { name: 'PROPOSE / DISPOSE' });
+
+  slide(
+    '<div class="eyebrow"><span>A bug worth your time</span></div>' +
+    '<h2>The sequels that vanished</h2>' +
+    '<div class="two">' +
+      '<div>' +
+        '<div class="panel"><div class="plabel">The symptom</div><div style="font-size:19px;color:var(--dim);line-height:1.55">The graph held <strong>11</strong> films from a corpus with 13 title records. <em>Spider-Man&nbsp;2</em>, <em>Spider-Man&nbsp;3</em> and <em>The Amazing Spider-Man&nbsp;2</em> had no node at all &mdash; and their cast and crew had been quietly re-attributed to the first film in each series.</div></div>' +
+        '<div class="panel"><div class="plabel">The cause</div><div style="font-size:19px;color:var(--dim);line-height:1.55">The year barrier only ran when two titles were <strong>identical</strong>. Different titles fell through to fuzzy matching &mdash; and <span class="mono">"Spider-Man"</span> vs <span class="mono">"Spider-Man 2"</span> scores about <strong>0.97</strong> Jaro-Winkler with near-identical embeddings.</div></div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="panel"><div class="plabel">The fix</div><pre>case "Film":\n<span class="g">  // year is a barrier, not a tie-breaker</span>\n  if (leftYear != rightYear) <span class="hl">return false</span>;\n  if (sameName) return true;\n<span class="g">  // a numeral carries the whole meaning</span>\n  if (ordinal(l) != ordinal(r)) <span class="hl">return false</span>;\n  return SimilarityMerge(...);</pre></div>' +
+        '<div class="note-good" style="margin-top:16px"><b>11 films became 13, and every one got its own cast and director.</b> Two regression tests now pin it. The lesson generalises past this codebase: <strong>fuzzy matching cannot see the one character that carries the meaning</strong>. Put the hard barriers before the soft ones.</div>' +
+      '</div>' +
+    '</div>', { name: 'RESOLUTION BUG' });
+
+  slide(
+    '<div class="eyebrow"><span>What the numbers actually said</span></div>' +
+    '<h2>The ladder is not a straight line</h2>' +
+    '<div class="lede">One question, twelve rungs, cold cache, four CPU cores. This is the table I would have preferred not to have.</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:24px;flex:1;min-height:0">' +
+      '<div><table class="measured"><thead><tr><th>Rung</th><th>Who plays Peter Parker?</th><th>Cold</th></tr></thead><tbody>' +
+        '<tr><td class="s">0</td><td><span class="wrong" style="color:var(--bad)">Tom Holland</span> — not in the document</td><td class="s">23s</td></tr>' +
+        '<tr><td class="s">1</td><td>Ranasinghe</td><td class="s">89s</td></tr>' +
+        '<tr><td class="s">2</td><td>Ranasinghe + history</td><td class="s">42s</td></tr>' +
+        '<tr><td class="s">3</td><td>Ranasinghe, history dropped</td><td class="s">7s</td></tr>' +
+        '<tr><td class="s">4–6</td><td>unchanged</td><td class="s">36–266s</td></tr>' +
+        '<tr><td class="s">7–9</td><td><strong>Pathirana leads</strong></td><td class="s">74–401s</td></tr>' +
+        '<tr><td class="s">10</td><td>All three films, by title and year</td><td class="s">283s</td></tr>' +
+        '<tr><td class="s">11</td><td>as rung 8</td><td class="s">38s</td></tr>' +
+      '</tbody></table></div>' +
+      '<div>' +
+        '<div class="caution"><b>Do not promise that every rung is better.</b> The jump from 0 to 1 is enormous &mdash; hallucination to grounding. Everything after it changes <em>emphasis</em>. From rung 7 the contextual prefixes tilt the answer toward a different continuity, because three performers really did hold the role and each rung weighs the evidence differently.</div>' +
+        '<div class="note-good" style="margin-top:16px"><b>What the ladder is actually for.</b> Not proving that more layers are better. Showing you <em>which</em> layer fixed a specific failure, so you can stop adding the ones that fix nothing on your data. Two of these eleven earned nothing on this corpus &mdash; and that is the most useful finding in the deck.</div>' +
+      '</div>' +
+    '</div>', { name: 'HONEST RESULTS' });
+
+  slide(
+    '<div class="eyebrow"><span>Making it demonstrable at all</span></div>' +
+    '<h2>Flow isolation, and the cost of honesty</h2>' +
+    '<div class="two">' +
+      '<div><div class="panel"><div class="plabel">Rules that make the comparison mean something</div><ul class="mech">' +
+        '<li>The answer cache key covers the document, the question and <strong>every resolved flag</strong>. Two rungs can never share a completion.</li>' +
+        '<li>No rung reuses another rung\'s retrieval.</li>' +
+        '<li><strong>No conversation history.</strong> Every question is independent, so rung 7 cannot quietly benefit from what rung 6 established.</li>' +
+        '<li>Rungs 1&ndash;11 answer only from retrieved context, or say exactly <code>Not found in the provided documents.</code></li>' +
+        '<li>Four <strong>ungrounded control questions</strong> about films absent from the corpus. Every rung 1&ndash;11 must refuse them; rung 0 must not. That group is the honesty check for the entire demo.</li>' +
+      '</ul></div></div>' +
+      '<div>' +
+        '<div class="panel"><div class="plabel">And the practical consequence</div><pre>cold   rung 9   <span class="r">401s</span>\ncached rung 9   <span class="g"> 16ms</span>\n\nanswers cached  19 / 50   <span class="hl">persisted</span></pre>' +
+        '<div style="margin-top:14px;font-size:17.5px;color:var(--dim);line-height:1.5">Twelve rungs of one question on a CPU box is twenty minutes of model calls. Whole answers are cached to disk, bounded to the fifty most recently used, and survive a restart &mdash; because a demo you cannot re-run is a demo you cannot trust.</div></div>' +
+      '</div>' +
+    '</div>', { name: 'FLOW ISOLATION' });
+
+  slide(
+    '<div class="eyebrow"><span>Take these away</span></div>' +
+    '<h2>Five things worth keeping</h2>' +
+    '<div style="display:flex;flex-direction:column;gap:14px;margin-top:26px;flex:1">' +
+      '<div class="panel"><h3>1 &nbsp;Grounding is the whole game; the rest is tuning</h3><div style="font-size:19px;color:var(--dim);line-height:1.5">Rung 0 to rung 1 is the difference between an answer and a guess. Nothing above it comes close to that delta.</div></div>' +
+      '<div class="panel"><h3>2 &nbsp;Instrument every layer, or you are guessing</h3><div style="font-size:19px;color:var(--dim);line-height:1.5">Per-arm labels, rank deltas, evidence spans, funnels. Two of our eleven layers turned out to earn nothing on this corpus &mdash; we only know because we could see inside.</div></div>' +
+      '<div class="panel"><h3>3 &nbsp;Let an LLM propose; never let it decide</h3><div style="font-size:19px;color:var(--dim);line-height:1.5">Extraction gets seven deterministic filters and a review gate. Evidence must be quotable from the source. Reverse that and your graph becomes a confident fiction.</div></div>' +
+      '<div class="panel"><h3>4 &nbsp;Hard barriers before soft ones</h3><div style="font-size:19px;color:var(--dim);line-height:1.5">Type and year are rules. Similarity is a hint. Run the rules first &mdash; or a 0.97 string match silently eats three films.</div></div>' +
+      '<div class="panel"><h3>5 &nbsp;Build the failures on purpose</h3><div style="font-size:19px;color:var(--dim);line-height:1.5">A corpus where the model cannot cheat, and questions it must refuse. A demo that only shows successes has told you nothing about your pipeline.</div></div>' +
+    '</div>', { name: 'TAKEAWAYS' });
+
+  slide(
+    '<div class="eyebrow"><span>Over to you</span></div>' +
+    '<h1>Questions</h1>' +
+    '<div class="deck-sub">Everything on the screen during this talk is reachable by clicking something in the app &mdash; retrieved chunks, per-arm scores, rank deltas, extracted triples, evidence spans, traversal paths, timings, and the exact prompt that was sent.</div>' +
+    '<div class="figs" style="grid-template-columns:repeat(3,1fr)">' +
+      '<div class="fig"><div class="n">14 / 26</div><div class="c">node types and relation types in the closed ontology</div></div>' +
+      '<div class="fig"><div class="n blue">4</div><div class="c">hops in the connection no chunk contains</div></div>' +
+      '<div class="fig"><div class="n">0</div><div class="c">conversation history, by design</div></div>' +
+    '</div>', { name: 'QUESTIONS' });
+
+  // ==========================================================================
+  // Wiring
+  // ==========================================================================
+
+  var deck = document.getElementById('deck');
+  var railEl = document.getElementById('rail');
+  var fname = document.getElementById('fname');
+  var fnum = document.getElementById('fnum');
+  var slideEl = document.getElementById('slide');
+  var helpEl = document.getElementById('help');
+  var current = 0;
+  var archSvg = buildArch();
+  var archHost = document.createElement('div');
+  archHost.style.cssText = 'position:absolute;inset:0';
+  archHost.appendChild(archSvg);
+
+  slides.forEach(function (s, i) {
+    var sec = document.createElement('section');
+    sec.className = 'slide';
+    sec.dataset.i = i;
+    sec.innerHTML = s.html;
+    deck.appendChild(sec);
+  });
+
+  RUNGS.forEach(function (r) {
+    var b = document.createElement('button');
+    b.innerHTML = r.n + '<span class="nm">' + r.name + '</span>';
+    b.title = 'Rung ' + r.n + ' — ' + r.teaches;
+    b.addEventListener('click', function () { gotoRung(r.n); });
+    railEl.appendChild(b);
+  });
+
+  function firstIndexForRung(n) {
+    for (var i = 0; i < slides.length; i++) { if (slides[i].rung === n) { return i; } }
+    return -1;
+  }
+
+  function gotoRung(n) {
+    var i = firstIndexForRung(n);
+    if (i >= 0) { show(i); }
+  }
+
+  /// Move to the first slide of the next or previous rung, from wherever you are —
+  /// including from the non-rung slides before and after the ladder.
+  function stepRung(dir) {
+    var here = slides[current].rung;
+    if (here === undefined) {
+      // Before the ladder, n lands on rung 0; after it, p lands on rung 11.
+      gotoRung(dir > 0 ? 0 : 11);
+      return;
+    }
+    var target = Math.max(0, Math.min(11, here + dir));
+    if (target === here && dir > 0) { show(current + 1); return; }
+    gotoRung(target);
+  }
+
+  function show(i) {
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    var s = slides[current];
+
+    Array.prototype.forEach.call(deck.children, function (sec, k) {
+      sec.classList.toggle('active', k === current);
+    });
+
+    // The diagram lives in exactly one slide at a time, moved rather than cloned, so there is only
+    // ever one source of truth for its state. paintArch then re-derives that state from the rung
+    // number, which is why jumping straight to rung 9 looks identical to walking there.
+    var sec = deck.children[current];
+    var full = sec.querySelector('#archFullHost');
+    var col = sec.querySelector('.right-col');
+
+    if (s.rung !== undefined && (full || col)) {
+      var slot;
+      if (full) {
+        full.style.position = 'relative';
+        slot = full;
+      } else {
+        slot = col.querySelector('.arch-slot');
+        if (!slot) {
+          slot = document.createElement('div');
+          slot.className = 'arch-slot';
+          col.insertBefore(slot, col.firstChild);
+        }
+      }
+      slot.appendChild(archHost);
+      paintArch(archSvg, s.rung);
+    } else if (archHost.parentNode) {
+      archHost.parentNode.removeChild(archHost);
+    }
+
+    var rungLabel = s.rung;
+    Array.prototype.forEach.call(railEl.children, function (b, n) {
+      b.classList.toggle('now', rungLabel === n);
+      b.classList.toggle('past', rungLabel !== undefined && n < rungLabel);
+    });
+    railEl.style.opacity = rungLabel === undefined ? '.34' : '1';
+
+    fname.textContent = s.name;
+    fnum.textContent = (current + 1) + ' / ' + slides.length;
+  }
+
+  function fit() {
+    var pad = 24;
+    var scale = Math.min((window.innerWidth - pad) / 1600, (window.innerHeight - pad) / 900);
+    slideEl.style.transform = 'scale(' + scale + ')';
+  }
+
+  var digits = '';
+  var digitTimer = null;
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === '?' ) { helpEl.classList.toggle('show'); return; }
+    if (e.key === 'Escape') { helpEl.classList.remove('show'); return; }
+
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(current + 1); return; }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(current - 1); return; }
+    if (e.key === 'Home') { show(0); return; }
+    if (e.key === 'End') { show(slides.length - 1); return; }
+
+    // Rung-to-rung, skipping the detail slides. The escape hatch when you are behind time:
+    // every rung's first slide states what it adds and shows the architecture change, which is
+    // the minimum viable version of the talk.
+    if (e.key === 'n' || e.key === 'N') { e.preventDefault(); stepRung(1); return; }
+    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); stepRung(-1); return; }
+    if (e.key === 'f' || e.key === 'F') {
+      if (document.fullscreenElement) { document.exitFullscreen(); }
+      else if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen(); }
+      return;
+    }
+
+    // A two-digit buffer, so rungs 10 and 11 are reachable by typing 1 then 0.
+    if (/^[0-9]$/.test(e.key)) {
+      digits += e.key;
+      clearTimeout(digitTimer);
+      var tryNow = parseInt(digits, 10);
+      if (digits.length === 2 || tryNow > 1) {
+        if (tryNow >= 0 && tryNow <= 11) { gotoRung(tryNow); }
+        digits = '';
+      } else {
+        digitTimer = setTimeout(function () {
+          var only = parseInt(digits, 10);
+          if (only >= 0 && only <= 11) { gotoRung(only); }
+          digits = '';
+        }, 520);
+      }
+    }
+  });
+
+  helpEl.addEventListener('click', function () { helpEl.classList.remove('show'); });
+
+  window.addEventListener('resize', fit);
+  fit();
+  show(0);
+})();
+</script>
+
+</body>
+</html>

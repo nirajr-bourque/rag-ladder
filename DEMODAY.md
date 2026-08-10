@@ -5,6 +5,18 @@ The card you hold while presenting. Everything here is measured, not estimated.
 Setting up for the first time? That is [OPERATIONS.md](OPERATIONS.md) — start with
 *"From nothing to a working demo"*. This file assumes it already works.
 
+**The slides:** [presentation/rag-ladder.html](presentation/rag-ladder.html) — one self-contained
+file, no build step and no network. Open it and press <kbd>f</kbd>.
+
+```powershell
+start presentation/rag-ladder.html
+```
+
+55 slides for a one-hour session. Each rung is three or four light slides — the architecture
+moment, how it works, what changed — rather than one dense one. <kbd>n</kbd> and <kbd>p</kbd> step
+rung to rung and skip the detail slides, which is the talk in its minimum form if you are behind
+time. <kbd>?</kbd> lists every key.
+
 ---
 
 ## Ten minutes before
