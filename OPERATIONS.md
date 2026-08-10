@@ -45,11 +45,20 @@ dotnet run --project tools/RagLadder.CorpusBuilder -- `
 # 3. point the app at those containers (this file is gitignored, so a fresh clone has no copy)
 #    see below for its contents
 
-# 4. run it, and leave it running
-dotnet run --project src/RagLadder.Api
+# 4. run it — waits for health, then reports what every provider resolved to
+pwsh tools/demo.ps1 start
 
-# 5. in a second terminal: load, index, build the graph, warm the cache
+# 5. load, index, build the graph, warm the cache
 pwsh tools/bootstrap-demo.ps1
+```
+
+After the first time, `tools/demo.ps1` is the only script you need day to day:
+
+```powershell
+pwsh tools/demo.ps1 start
+pwsh tools/demo.ps1 stop
+pwsh tools/demo.ps1 restart
+pwsh tools/demo.ps1 status
 ```
 
 Then open <http://localhost:5099>, go to **Ask**, and type `Who plays Peter Parker?` — see §12.1.
@@ -815,14 +824,59 @@ exactly what is wrong. Read it; they are written to be actionable.
 
 ## 11. Run the app
 
-### Normal
+### Day to day
+
+```powershell
+pwsh tools/demo.ps1 start        # containers if needed, then the app, then waits for health
+pwsh tools/demo.ps1 stop
+pwsh tools/demo.ps1 restart
+pwsh tools/demo.ps1 status
+```
+
+`start` does the things that went wrong often enough to be worth automating: it brings the
+containers up first (starting the app against a cold Qdrant is how you end up demoing on the SQLite
+fallback without noticing), waits for `/api/health` to actually answer before saying ready, prints
+what every provider resolved to, and warns if any of them fell back or the embedder probe is below
+band. It also reports how many answers are warm, so you know whether the ladder will replay
+instantly. If the app dies during startup it tails `data/app.err` rather than leaving you to find it.
+
+`stop` matches this app by command line, so it will not take unrelated `dotnet` processes with it,
+and it waits for the port to be released — a `restart` straight after would otherwise fail on an
+address already in use. Containers are left up unless you pass `-Containers`, because restarting
+Ollama evicts the model from memory and costs one slow answer afterwards.
+
+Useful flags: `-Build` to rebuild first, `-Open` to launch the browser once healthy, `-Port 8080`
+if 5099 is taken, `-TimeoutSeconds` if your machine is slow to start.
+
+Output on a healthy start:
+
+```
+  containers:
+    ragladder-neo4j    Up 21 hours (healthy)
+    ragladder-ollama   Up 23 hours (healthy)
+    ragladder-qdrant   Up 27 hours
+Starting the app on port 5099…
+  ready.
+  health: ok
+    embedder  ok   all-minilm, 384 dims, served by Ollama.
+    reranker  ok   Chat model scoring.
+    vector    ok   Qdrant reachable, 3 collections.
+    graph     ok   Neo4j reachable, 227 nodes.
+    ollama    ok   local Ollama at http://localhost:11434/: 7 model tag(s) available.
+  answers cached: 12/50
+    [12 rungs: 0,1,2,3,4,5,6,7,8,9,10,11] Who plays Peter Parker?
+```
+
+### By hand
 
 ```powershell
 dotnet run --project src/RagLadder.Api
 ```
 
 Serves <http://localhost:5099> and opens a browser. `Ctrl+C` to stop. If you are on the local
-Ollama route, make sure the container is up first (`docker compose up -d`).
+Ollama route, make sure the container is up first (`docker compose up -d`). Note that `dotnet run`
+spawns a child process, which is why `demo.ps1` launches the built DLL directly — one process, one
+PID, a clean stop.
 
 The port comes from the `http` launch profile. Change `applicationUrl` in
 `src/RagLadder.Api/Properties/launchSettings.json`, or override for one run:
